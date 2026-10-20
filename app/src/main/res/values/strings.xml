@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MLBB Blocker</string>
+    <string name="app_description">Локальная блокировка выбранных серверов Mobile Legends</string>
+
+    <string name="status_stopped">Выключен</string>
+    <string name="status_starting">Запуск…</string>
+    <string name="status_running">Активен</string>
+    <string name="status_error">Ошибка</string>
+
+    <string name="main_title">MLBB Blocker</string>
+    <string name="main_subtitle">Блокировка серверов только для Mobile Legends</string>
+    <string name="connect">Включить блокировку</string>
+    <string name="disconnect">Выключить</string>
+    <string name="rules_count">Правил: %1$d</string>
+    <string name="discovery_title">Обнаружение серверов</string>
+    <string name="discovery_hint">Включите блокировку, зайдите в MLBB и посмотрите, к каким IP подключается игра. Московские серверы можно добавить в блоклист.</string>
+    <string name="connections_tab">Подключения</string>
+    <string name="blocklist_tab">Блоклист</string>
+    <string name="settings_tab">Настройки</string>
+
+    <string name="notification_channel">Блокировка MLBB</string>
+    <string name="notification_title">MLBB Blocker активен</string>
+    <string name="notification_text">Блокируется %1$d правил</string>
+    <string name="notification_stop">Выключить</string>
+    <string name="blocked_notification_title">MLBB пытается подключиться к заблокированному серверу</string>
+    <string name="blocked_notification_text">%1$s:%2$d · нажмите «Разрешить», если это матч-сервер</string>
+    <string name="blocked_notification_allow">Разрешить 5 мин</string>
+
+    <string name="error_mlbb_missing">Mobile Legends не установлена (com.mobile.legends / com.mobilelegends.mi).</string>
+    <string name="error_vpn_permission">Разрешение VPN не выдано.</string>
+    <string name="error_empty_blocklist">Блоклист пуст. Включите обнаружение и добавьте IP московских серверов.</string>
+
+    <string name="add_rule">Добавить правило</string>
+    <string name="add_ip">Заблокировать IP</string>
+    <string name="add_subnet">Заблокировать /24</string>
+    <string name="delete">Удалить</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отмена</string>
+    <string name="import_list">Импорт списка</string>
+    <string name="export_list">Экспорт списка</string>
+    <string name="clear">Очистить</string>
+    <string name="no_connections">Пока нет подключений. Включите блокировку и запустите игру.</string>
+    <string name="no_rules">Блоклист пуст</string>
+    <string name="cidr_hint">IP или CIDR, например 1.2.3.4 или 1.2.3.0/24</string>
+    <string name="invalid_cidr">Некорректный IP/CIDR</string>
+    <string name="rule_added">Правило добавлено</string>
+    <string name="rules_added">Добавлено правил: %1$d</string>
+    <string name="rules_not_added">Новые правила не найдены</string>
+    <string name="blocklist_cleared">Блоклист очищен</string>
+    <string name="connections_cleared">Журнал подключений очищен</string>
+    <string name="exported">Список скопирован в буфер обмена</string>
+    <string name="preset_added">Пресет «%1$s»: добавлено %2$d</string>
+    <string name="stabilization_on">Стабилизация включена: дальние серверы заблокированы</string>
+    <string name="stabilization_off">Стабилизация выключена</string>
+    <string name="region_enabled">Профиль «%1$s» включён</string>
+    <string name="region_disabled">Профиль «%1$s» выключен</string>
+    <string name="only_mlbb">Только Mobile Legends</string>
+    <string name="only_mlbb_desc">Весь остальной трафик телефона идёт напрямую и не затрагивается.</string>
+    <string name="core_log">Журнал ядра</string>
+    <string name="discovery_mode">Режим обнаружения</string>
+    <string name="discovery_mode_desc">Не блокировать правила, только записывать подключения. Выключите после сбора IP.</string>
+    <string name="settings_info">Приложение использует Android VpnService как локальный фильтр. Удалённого VPN-сервера нет, трафик не перенаправляется в другой регион. Блокировка IP не гарантирует смену игрового региона.</string>
+</resources>
