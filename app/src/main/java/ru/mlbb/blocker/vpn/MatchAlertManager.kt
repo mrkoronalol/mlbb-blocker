@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicBoolean
 import ru.mlbb.blocker.MainActivity
 import ru.mlbb.blocker.MlbbBlockerApp
 import ru.mlbb.blocker.R
@@ -60,6 +61,7 @@ class MatchAlertManager(
     private val cooldownLock = Any()
     private val lastAlerts = mutableMapOf<String, Long>()
     private var lastGlobalAlert = 0L
+    private val firstMatchSkipped = AtomicBoolean(false)
 
     private var overlay: MatchOverlayView? = null
     private var hideRunnable: Runnable? = null
@@ -70,6 +72,7 @@ class MatchAlertManager(
     fun onMatch(ip: String, port: Int, network: String, blocked: Boolean) {
         if (!store.matchAlerts) return
         if (!GamePorts.isMatchPort(port) || Cidr.isPrivate(ip)) return
+        if (firstMatchSkipped.compareAndSet(false, true)) return
         val key = "$ip:$port"
         if (!allowAlert(key)) return
 
