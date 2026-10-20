@@ -133,6 +133,33 @@ class SingBoxConfigBuilderTest {
     }
 
     @Test
+    fun gameProbePort30190AlwaysGoesDirect() {
+        val config = JSONObject(
+            SingBoxConfigBuilder.build(
+                rules = listOf("139.45.245.2/32", "92.223.91.0/24"),
+                discoveryMode = false,
+                clashPort = 39090,
+                clashSecret = "test-secret",
+            ),
+        )
+        val rules = config.getJSONObject("route").getJSONArray("rules")
+        var probeIndex = -1
+        var blockIndex = -1
+        for (index in 0 until rules.length()) {
+            val rule = rules.getJSONObject(index)
+            if (rule.optString("outbound") == "direct" && rule.has("port")) {
+                probeIndex = index
+            }
+            if (rule.optString("outbound") == "sink" && rule.has("ip_cidr")) {
+                blockIndex = index
+            }
+        }
+        assertTrue(probeIndex >= 0)
+        assertTrue(blockIndex > probeIndex)
+        assertEquals(30190, rules.getJSONObject(probeIndex).getJSONArray("port").getInt(0))
+    }
+
+    @Test
     fun discoveryModeOmitsMatchPortBlock() {
         val config = JSONObject(
             SingBoxConfigBuilder.build(
