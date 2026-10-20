@@ -1,5 +1,6 @@
 package ru.mlbb.blocker.data
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -15,6 +16,7 @@ object UpdateNotifier {
     private const val KEY_NOTIFIED_VERSION = "notified_version"
     private const val NOTIFICATION_ID = 5001
 
+    @SuppressLint("MissingPermission")
     fun notifyIfNeeded(context: Context, info: UpdateInfo) {
         val app = context.applicationContext
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

@@ -1,5 +1,7 @@
 # MLBB Blocker
 
+<p align="left"><img src="docs/logo-preview.png" width="120" alt="MLBB Blocker"></p>
+
 Локальный фильтр серверов **Mobile Legends: Bang Bang** для Android. Приложение поднимает VPN только для MLBB, блокирует нежелательные IP и помогает выбрать сервер в нужном регионе.
 
 - Без удалённого VPN-сервера: трафик не уходит третьим лицам.

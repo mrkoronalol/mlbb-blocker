@@ -58,6 +58,12 @@ fun AboutScreen() {
             FeatureRow("Сбор серверов за 60 секунд и экспорт списка IP")
         }
 
+        AboutCard("Что нового в 0.11.1") {
+            BulletRow("Новый логотип MB в мятном круге")
+            BulletRow("Adaptive icon, круглая иконка и monochrome для Android 13")
+            BulletRow("Обновлена иконка уведомления и плитки Quick Settings")
+        }
+
         AboutCard("Что нового в 0.11.0") {
             BulletRow("Компактная карточка матча в стиле уведомления")
             BulletRow("Вкладка «Монитор» с фильтрами по всем регионам")
