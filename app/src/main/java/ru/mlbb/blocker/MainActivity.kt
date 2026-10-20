@@ -66,6 +66,8 @@ class MainActivity : ComponentActivity() {
                     onClearConnections = viewModel::clearConnections,
                     onClearLogs = viewModel::clearLogs,
                     onFastRejectChange = viewModel::setFastReject,
+                    onMatchAlertsChange = viewModel::setMatchAlerts,
+                    onShowMatchDemo = viewModel::showMatchDemo,
                     onRefreshDiagnostics = viewModel::refreshMlbbInstalled,
                     onDownloadGeoIp = viewModel::downloadGeoIp,
                     onStartGame = ::startMatch,

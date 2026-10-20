@@ -31,6 +31,9 @@ import ru.mlbb.blocker.data.geo.GeoIpStatus
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 
 @Composable
@@ -38,6 +41,8 @@ fun SettingsScreen(
     ui: UiState,
     onDiscoveryChange: (Boolean) -> Unit,
     onFastRejectChange: (Boolean) -> Unit,
+    onMatchAlertsChange: (Boolean) -> Unit,
+    onShowMatchDemo: () -> Unit,
     onRefreshDiagnostics: () -> Unit,
     onDownloadGeoIp: () -> Unit,
     onClearLogs: () -> Unit,
@@ -89,6 +94,53 @@ fun SettingsScreen(
             }
             Text(
                 "Перехватываются com.mobile.legends и com.mobilelegends.mi.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        val context = LocalContext.current
+        SettingsCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Карточка матча", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Показывать сервер и пинг поверх игры, когда MLBB подключается к матч-серверу.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = ui.matchAlerts, onCheckedChange = onMatchAlertsChange)
+            }
+            Text(
+                if (ui.overlayPermissionGranted) {
+                    "Поверх игры: разрешено"
+                } else {
+                    "Поверх игры: не разрешено — покажем обычное уведомление."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (ui.overlayPermissionGranted) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.tertiary
+                },
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (ui.overlayPermissionGranted) {
+                    TextButton(onClick = { openOverlaySettings(context) }) {
+                        Text("Изменить разрешение")
+                    }
+                } else {
+                    Button(onClick = { openOverlaySettings(context) }) {
+                        Text("Разрешить показ поверх игры")
+                    }
+                }
+                TextButton(onClick = onShowMatchDemo) {
+                    Text("Проверить карточку")
+                }
+            }
+            Text(
+                "На Xiaomi/Redmi может понадобиться разрешение «Показывать всплывающие окна в фоне». Без overlay-разрешения показывается heads-up уведомление.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -275,6 +327,17 @@ private fun DiagnosticsCard(ui: UiState, onRefresh: () -> Unit) {
     }
 }
 
+private fun openOverlaySettings(context: Context) {
+    val intent = Intent(
+        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+        Uri.parse("package:${context.packageName}"),
+    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }
+        .onFailure {
+            Toast.makeText(context, "Не удалось открыть настройки разрешения", Toast.LENGTH_SHORT).show()
+        }
+}
+
 private fun copyDiagnostics(context: Context, ui: UiState) {
     val text = buildString {
         appendLine("MLBB Blocker ${BuildConfig.VERSION_NAME}")
@@ -284,6 +347,7 @@ private fun copyDiagnostics(context: Context, ui: UiState) {
         appendLine("rules=${ui.effectiveRuleCount}")
         appendLine("profile=${ui.selectedProfile ?: "none"}")
         appendLine("fastReject=${ui.fastReject}")
+        appendLine("matchAlerts=${ui.matchAlerts} overlay=${ui.overlayPermissionGranted}")
         ui.mlbbPackages.forEach { info ->
             appendLine(
                 "${info.packageName}: installed=${info.installed} enabled=${info.enabled} " +

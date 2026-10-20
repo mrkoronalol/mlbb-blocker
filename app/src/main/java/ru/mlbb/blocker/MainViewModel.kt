@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.VpnService
+import android.provider.Settings
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +40,7 @@ import ru.mlbb.blocker.data.NetworkPing
 import ru.mlbb.blocker.data.Presets
 import ru.mlbb.blocker.data.RegionProfiles
 import ru.mlbb.blocker.vpn.BlockerController
+import ru.mlbb.blocker.vpn.MatchAlertManager
 
 data class UiState(
     val status: BlockerStatus = BlockerStatus.Stopped,
@@ -64,6 +66,8 @@ data class UiState(
     val allowRules: List<AllowRule> = emptyList(),
     val blockedAttempts: List<BlockedAttemptEntity> = emptyList(),
     val currentMatch: ConnectionStat? = null,
+    val matchAlerts: Boolean = true,
+    val overlayPermissionGranted: Boolean = false,
 ) {
     val isBusy: Boolean get() = status is BlockerStatus.Starting
     val isRunning: Boolean get() = status is BlockerStatus.Running
@@ -72,6 +76,7 @@ data class UiState(
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val store = BlocklistStore(application)
+    private var demoMatchAlert: MatchAlertManager? = null
     private val _ui = MutableStateFlow(
         UiState(
             rules = store.loadRules(),
@@ -88,6 +93,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             discoveryActive = store.discoveryMode || store.discoveryUntil > System.currentTimeMillis(),
             geoIpStatus = GeoIpRepository.status.value,
             allowRules = store.loadAllowRules(),
+            matchAlerts = store.matchAlerts,
+            overlayPermissionGranted = runCatching { Settings.canDrawOverlays(application) }
+                .getOrDefault(false),
         ),
     )
     val ui: StateFlow<UiState> = _ui.asStateFlow()
@@ -395,6 +403,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 vpnPermissionGranted = runCatching { VpnService.prepare(getApplication()) == null }
                     .getOrDefault(false),
                 currentUserId = android.os.Process.myUid() / 100000,
+                matchAlerts = store.matchAlerts,
+                overlayPermissionGranted = runCatching {
+                    Settings.canDrawOverlays(getApplication())
+                }.getOrDefault(false),
             )
         }
     }
@@ -403,6 +415,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         store.fastReject = enabled
         _ui.update { it.copy(fastReject = enabled) }
         reloadIfRunning()
+    }
+
+    fun setMatchAlerts(enabled: Boolean) {
+        store.matchAlerts = enabled
+        _ui.update { it.copy(matchAlerts = enabled) }
+        showMessage(if (enabled) "Уведомления о матче включены" else "Уведомления о матче выключены")
+    }
+
+    fun showMatchDemo() {
+        demoMatchAlert?.destroy()
+        demoMatchAlert = MatchAlertManager(getApplication(), viewModelScope).also { it.showDemo() }
+    }
+
+    override fun onCleared() {
+        demoMatchAlert?.destroy()
+        demoMatchAlert = null
+        super.onCleared()
     }
 
     private fun loadPackageInfo(): List<MlbbPackageInfo> {

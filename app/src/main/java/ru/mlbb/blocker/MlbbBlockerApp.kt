@@ -35,6 +35,15 @@ class MlbbBlockerApp : Application() {
                     NotificationManager.IMPORTANCE_HIGH,
                 ),
             )
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    CHANNEL_MATCH,
+                    getString(R.string.match_channel_name),
+                    NotificationManager.IMPORTANCE_HIGH,
+                ).apply {
+                    enableVibration(true)
+                },
+            )
         }
     }
 
@@ -52,6 +61,7 @@ class MlbbBlockerApp : Application() {
     companion object {
         const val CHANNEL_SERVICE = "mlbb_blocker_service"
         const val CHANNEL_BLOCKED = "mlbb_blocker_blocked"
+        const val CHANNEL_MATCH = "mlbb_blocker_match"
 
         lateinit var instance: MlbbBlockerApp
             private set

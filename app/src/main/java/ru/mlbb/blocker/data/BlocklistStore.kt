@@ -26,6 +26,12 @@ class BlocklistStore(context: Context) {
             prefs.edit().putBoolean(KEY_LOG_BLOCKED, value).apply()
         }
 
+    var matchAlerts: Boolean
+        get() = prefs.getBoolean(KEY_MATCH_ALERTS, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_MATCH_ALERTS, value).apply()
+        }
+
     var discoveryUntil: Long
         get() = prefs.getLong(KEY_DISCOVERY_UNTIL, 0L)
         set(value) {
@@ -211,6 +217,7 @@ class BlocklistStore(context: Context) {
         private const val KEY_ALLOW_RULES = "allow_rules"
         private const val KEY_REGIONS = "enabled_regions"
         private const val KEY_SELECTED_PROFILE = "selected_profile"
+        private const val KEY_MATCH_ALERTS = "match_alerts"
         private const val KEY_STABILIZATION_LEGACY = "ping_stabilization"
     }
 }

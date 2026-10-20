@@ -56,6 +56,7 @@ class BlockerVpnService : VpnService() {
     private var tunInterface: ParcelFileDescriptor? = null
     private var startJob: Job? = null
     private var connectionMonitor: ConnectionMonitor? = null
+    private var matchAlertManager: MatchAlertManager? = null
     private var discoveryJob: Job? = null
     private var allowExpiryJob: Job? = null
     private var coreLogMonitor: CoreLogMonitor? = null
@@ -154,6 +155,8 @@ class BlockerVpnService : VpnService() {
                 BlockerRepository.log("Блокировка запущена. Правил: $lastRuleCount, режим обнаружения: ${BlocklistStore(this@BlockerVpnService).discoveryMode}")
                 scheduleDiscoveryEnd()
                 scheduleAllowExpiry()
+                matchAlertManager?.destroy()
+                matchAlertManager = MatchAlertManager(this@BlockerVpnService, scope)
                 startConnectionMonitor()
                 startCoreLogMonitor()
             } catch (t: Throwable) {
@@ -196,6 +199,8 @@ class BlockerVpnService : VpnService() {
         allowExpiryJob = null
         coreLogMonitor?.stop()
         coreLogMonitor = null
+        matchAlertManager?.destroy()
+        matchAlertManager = null
         connectionMonitor?.stop()
         connectionMonitor = null
         BlockerRepository.setStatus(BlockerStatus.Stopped)
@@ -227,6 +232,8 @@ class BlockerVpnService : VpnService() {
         allowExpiryJob = null
         coreLogMonitor?.stop()
         coreLogMonitor = null
+        matchAlertManager?.destroy()
+        matchAlertManager = null
         connectionMonitor?.stop()
         connectionMonitor = null
         runCatching { commandServer?.closeService() }
@@ -473,42 +480,12 @@ class BlockerVpnService : VpnService() {
         connectionMonitor = ConnectionMonitor(
             scope,
             { message -> BlockerRepository.log(message) },
-            { ip, port, network ->
-                if (network == "tcp" && port == 10003 && !stopping.get()) {
-                    showBlockedMatchNotification(ip, port)
+            { ip, port, network, blocked ->
+                if (!stopping.get()) {
+                    matchAlertManager?.onMatch(ip, port, network, blocked)
                 }
             },
         ).also { it.start() }
-    }
-
-    private fun showBlockedMatchNotification(ip: String, port: Int) {
-        val allowIntent = PendingIntent.getService(
-            this,
-            ip.hashCode(),
-            Intent(this, BlockerVpnService::class.java)
-                .setAction(BlockerController.ACTION_ALLOW_TEMP)
-                .putExtra(BlockerController.EXTRA_IP, ip)
-                .putExtra(BlockerController.EXTRA_ALLOW_PORT, port)
-                .putExtra(BlockerController.EXTRA_TTL, 5 * 60 * 1000L),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        val openIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        val notification = NotificationCompat.Builder(this, MlbbBlockerApp.CHANNEL_BLOCKED)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(getString(R.string.blocked_notification_title))
-            .setContentText(getString(R.string.blocked_notification_text, ip, port))
-            .setContentIntent(openIntent)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .addAction(0, getString(R.string.blocked_notification_allow), allowIntent)
-            .build()
-        val manager = getSystemService(android.app.NotificationManager::class.java)
-        manager?.notify(2000 + (ip.hashCode() and 0x7FFFFFFF) % 1000, notification)
     }
 
     private fun startCoreLogMonitor() {
@@ -587,6 +564,8 @@ class BlockerVpnService : VpnService() {
         allowExpiryJob = null
         coreLogMonitor?.stop()
         coreLogMonitor = null
+        matchAlertManager?.destroy()
+        matchAlertManager = null
         connectionMonitor?.stop()
         connectionMonitor = null
         runCatching { commandServer?.closeService() }

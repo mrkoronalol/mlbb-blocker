@@ -61,4 +61,21 @@
     <string name="discovery_mode">Режим обнаружения</string>
     <string name="discovery_mode_desc">Не блокировать правила, только записывать подключения. Выключите после сбора IP.</string>
     <string name="settings_info">Приложение использует Android VpnService как локальный фильтр. Удалённого VPN-сервера нет, трафик не перенаправляется в другой регион. Блокировка IP не гарантирует смену игрового региона.</string>
+
+    <string name="match_channel_name">Найденный матч</string>
+    <string name="match_found_title">Матч найден</string>
+    <string name="match_found_text">%1$s · %2$s · %3$s</string>
+    <string name="match_found_allowed">разрешён</string>
+    <string name="match_found_blocked">заблокирован</string>
+    <string name="match_notification_open">Открыть</string>
+    <string name="match_alert_settings_title">Карточка матча</string>
+    <string name="match_alert_settings_desc">Показывать сервер и пинг поверх игры, когда MLBB подключается к матч-серверу.</string>
+    <string name="match_overlay_allowed">Поверх игры: разрешено</string>
+    <string name="match_overlay_denied">Поверх игры: не разрешено — покажем обычное уведомление.</string>
+    <string name="match_overlay_allow">Разрешить показ поверх игры</string>
+    <string name="match_overlay_change">Изменить разрешение</string>
+    <string name="match_overlay_test">Проверить карточку</string>
+    <string name="match_overlay_test_hint">Карточка покажется поверх текущего экрана. Во время матча её можно закрыть или разрешить сервер на 5 минут.</string>
+    <string name="match_alert_off">Уведомления о матче выключены.</string>
+    <string name="match_alert_demo_denied">Нет разрешения на показ поверх игры и уведомления.</string>
 </resources>

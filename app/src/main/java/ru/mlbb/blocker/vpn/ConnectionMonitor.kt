@@ -15,12 +15,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import ru.mlbb.blocker.data.GamePorts
 import ru.mlbb.blocker.data.db.MonitorRepository
 
 class ConnectionMonitor(
     private val scope: CoroutineScope,
     private val log: (String) -> Unit,
-    private val onBlocked: ((String, Int, String) -> Unit)? = null,
+    private val onMatch: ((String, Int, String, Boolean) -> Unit)? = null,
 ) {
     private var client: CommandClient? = null
     private var connectJob: Job? = null
@@ -109,11 +110,14 @@ class ConnectionMonitor(
                         val network = connection.network?.takeIf { it.isNotBlank() } ?: "tcp"
                         val host = connection.domain?.takeIf { it.isNotBlank() }
                         val timestamp = normalizeTimestamp(connection.createdAt)
-                        if (connection.outbound == "sink") {
+                        val blocked = connection.outbound == "sink"
+                        if (blocked) {
                             MonitorRepository.recordBlockedAttempt(parsed.first, parsed.second, network, "sink")
-                            onBlocked?.invoke(parsed.first, parsed.second, network)
                         } else {
                             MonitorRepository.record(parsed.first, parsed.second, network, host, timestamp)
+                        }
+                        if (GamePorts.isMatchPort(parsed.second)) {
+                            onMatch?.invoke(parsed.first, parsed.second, network, blocked)
                         }
                     }
                 } catch (_: Throwable) {

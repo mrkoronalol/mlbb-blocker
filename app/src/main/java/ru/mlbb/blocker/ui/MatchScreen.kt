@@ -87,6 +87,15 @@ fun MatchScreen(
                     ui.selectedProfile != null,
                     RegionProfiles.byId(ui.selectedProfile ?: "")?.title ?: "не выбран",
                 )
+                CheckRow(
+                    "Карточка матча",
+                    ui.matchAlerts,
+                    when {
+                        !ui.matchAlerts -> "выключена"
+                        ui.overlayPermissionGranted -> "поверх игры"
+                        else -> "уведомление"
+                    },
+                )
                 CheckRow("Быстрый отказ", ui.fastReject, if (ui.fastReject) "RST/ICMP" else "drop")
                 if (game == null) {
                     Text(
