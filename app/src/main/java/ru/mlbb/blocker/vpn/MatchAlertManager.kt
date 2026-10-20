@@ -69,7 +69,6 @@ class MatchAlertManager(
 
     fun onMatch(ip: String, port: Int, network: String, blocked: Boolean) {
         if (!store.matchAlerts) return
-        if (System.currentTimeMillis() < store.startupGraceUntil) return
         if (!GamePorts.isMatchPort(port) || Cidr.isPrivate(ip)) return
         val key = "$ip:$port"
         if (!allowAlert(key)) return

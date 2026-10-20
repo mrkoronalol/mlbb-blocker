@@ -38,12 +38,6 @@ class BlocklistStore(context: Context) {
             prefs.edit().putLong(KEY_DISCOVERY_UNTIL, value).apply()
         }
 
-    var startupGraceUntil: Long
-        get() = prefs.getLong(KEY_STARTUP_GRACE_UNTIL, 0L)
-        set(value) {
-            prefs.edit().putLong(KEY_STARTUP_GRACE_UNTIL, value).apply()
-        }
-
     var enabledRegions: Set<String>
         get() {
             prefs.getStringSet(KEY_REGIONS, null)?.let { return it.toSet() }
@@ -224,7 +218,6 @@ class BlocklistStore(context: Context) {
         private const val KEY_REGIONS = "enabled_regions"
         private const val KEY_SELECTED_PROFILE = "selected_profile"
         private const val KEY_MATCH_ALERTS = "match_alerts"
-        private const val KEY_STARTUP_GRACE_UNTIL = "startup_grace_until"
         private const val KEY_STABILIZATION_LEGACY = "ping_stabilization"
     }
 }
