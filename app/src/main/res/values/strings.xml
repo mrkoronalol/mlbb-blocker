@@ -78,4 +78,12 @@
     <string name="match_overlay_test_hint">Карточка покажется поверх текущего экрана. Во время матча её можно закрыть или разрешить сервер на 5 минут.</string>
     <string name="match_alert_off">Уведомления о матче выключены.</string>
     <string name="match_alert_demo_denied">Нет разрешения на показ поверх игры и уведомления.</string>
+
+    <string name="update_channel_name">Обновления приложения</string>
+    <string name="update_notification_title">Доступна версия %1$s</string>
+    <string name="update_notification_text">Новая версия MLBB Blocker уже на GitHub. Нажмите, чтобы скачать APK.</string>
+    <string name="update_available_title">Доступна новая версия %1$s</string>
+    <string name="update_available_text">Скачайте свежий APK с GitHub. Текущая версия: %1$s.</string>
+    <string name="update_download">Скачать APK</string>
+    <string name="update_release_page">Релиз на GitHub</string>
 </resources>

@@ -188,12 +188,12 @@ fun SettingsScreen(
 
         SettingsCard {
             Text(
-                "Мониторинг и пинг",
+                "Монитор и пинг",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                "Пока блокировка включена, приложение собирает все IP подключений MLBB и сохраняет их между запусками. Во вкладке «Мониторинг» можно измерить TCP-пинг до сервера и сразу заблокировать IP или подсеть.",
+                "Пока блокировка включена, приложение собирает все IP подключений MLBB и сохраняет их между запусками. Во вкладке «Монитор» можно фильтровать серверы по регионам, измерить TCP-пинг и сразу заблокировать IP или подсеть.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

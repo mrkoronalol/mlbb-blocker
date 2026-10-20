@@ -39,6 +39,9 @@ import ru.mlbb.blocker.data.geo.GeoIpStatus
 import ru.mlbb.blocker.data.NetworkPing
 import ru.mlbb.blocker.data.Presets
 import ru.mlbb.blocker.data.RegionProfiles
+import ru.mlbb.blocker.data.UpdateChecker
+import ru.mlbb.blocker.data.UpdateInfo
+import ru.mlbb.blocker.data.UpdateNotifier
 import ru.mlbb.blocker.vpn.BlockerController
 import ru.mlbb.blocker.vpn.MatchAlertManager
 
@@ -68,6 +71,8 @@ data class UiState(
     val currentMatch: ConnectionStat? = null,
     val matchAlerts: Boolean = true,
     val overlayPermissionGranted: Boolean = false,
+    val updateInfo: UpdateInfo? = null,
+    val updateChecking: Boolean = false,
 ) {
     val isBusy: Boolean get() = status is BlockerStatus.Starting
     val isRunning: Boolean get() = status is BlockerStatus.Running
@@ -143,6 +148,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             if (BlockerRepository.status.value is BlockerStatus.Running) {
                 refreshRules()
+            }
+        }
+        checkForUpdates()
+    }
+
+    fun checkForUpdates() {
+        if (_ui.value.updateChecking) return
+        _ui.update { it.copy(updateChecking = true) }
+        viewModelScope.launch {
+            val info = UpdateChecker.checkLatest(BuildConfig.VERSION_NAME)
+            _ui.update { it.copy(updateInfo = info, updateChecking = false) }
+            if (info != null) {
+                UpdateNotifier.notifyIfNeeded(getApplication(), info)
             }
         }
     }

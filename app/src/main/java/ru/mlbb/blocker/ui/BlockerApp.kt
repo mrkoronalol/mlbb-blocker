@@ -1,5 +1,7 @@
 package ru.mlbb.blocker.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,6 +47,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -60,9 +63,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import ru.mlbb.blocker.BuildConfig
 import ru.mlbb.blocker.R
 import ru.mlbb.blocker.UiState
 import ru.mlbb.blocker.data.BlockPreset
@@ -70,6 +75,7 @@ import ru.mlbb.blocker.data.BlockerStatus
 import ru.mlbb.blocker.data.ConnectionStat
 import ru.mlbb.blocker.data.RegionProfile
 import ru.mlbb.blocker.data.RegionProfiles
+import ru.mlbb.blocker.data.UpdateInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -155,7 +161,7 @@ fun BlockerApp(
                         showAbout = false
                         tab = it
                     }
-                    NavigationItem(2, tab, "Мониторинг", Icons.Default.Search) {
+                    NavigationItem(2, tab, "Монитор", Icons.Default.Search) {
                         showAbout = false
                         tab = it
                     }
@@ -290,6 +296,10 @@ private fun HomeScreen(
             }
         }
 
+        ui.updateInfo?.let { update ->
+            UpdateBanner(update = update)
+        }
+
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
@@ -383,7 +393,7 @@ private fun HomeScreen(
                 icon = Icons.Default.Info,
                 color = MaterialTheme.colorScheme.secondary,
                 title = "Обнаружение включено",
-                text = "Правила не применяются. Зайдите в игру, затем откройте вкладку «Мониторинг» и заблокируйте московские IP.",
+                text = "Правила не применяются. Зайдите в игру, затем откройте вкладку «Монитор» и заблокируйте ненужные IP.",
             )
         } else if (ui.selectedProfile == null) {
             NoticeCard(
@@ -472,6 +482,65 @@ private fun HomeScreen(
         ) {
             Text("О приложении и возможностях")
         }
+    }
+}
+
+@Composable
+private fun UpdateBanner(update: UpdateInfo) {
+    val context = LocalContext.current
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+        ),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.update_available_title, update.version),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        stringResource(R.string.update_available_text, BuildConfig.VERSION_NAME),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { openUrl(context, update.downloadUrl) }) {
+                    Text(stringResource(R.string.update_download))
+                }
+                TextButton(onClick = { openUrl(context, update.releaseUrl) }) {
+                    Text(stringResource(R.string.update_release_page))
+                }
+            }
+        }
+    }
+}
+
+private fun openUrl(context: android.content.Context, url: String) {
+    runCatching {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
     }
 }
 

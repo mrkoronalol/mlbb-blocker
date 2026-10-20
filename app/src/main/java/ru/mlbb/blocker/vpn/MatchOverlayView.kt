@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
@@ -19,19 +20,20 @@ class MatchOverlayView(
 
     private val titleView = TextView(context)
     private val cityView = TextView(context)
+    private val statusView = TextView(context)
     private val addressView = TextView(context)
-    private val detailsView = TextView(context)
     private val pingView = TextView(context)
     private val allowButton = TextView(context)
 
     init {
-        setPadding(dp(14), dp(4), dp(14), dp(4))
+        setPadding(dp(12), dp(4), dp(12), dp(4))
 
         val card = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            background = rounded(CARD_BG, 20, STROKE)
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            elevation = dp(10).toFloat()
+            background = rounded(CARD_BG, 16, STROKE)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            elevation = dp(8).toFloat()
+            minimumWidth = dp(280)
         }
 
         val header = LinearLayout(context).apply {
@@ -40,17 +42,17 @@ class MatchOverlayView(
         }
         titleView.apply {
             text = "МАТЧ НАЙДЕН"
-            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11f)
-            letterSpacing = 0.12f
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10f)
+            letterSpacing = 0.1f
             setTextColor(ACCENT)
             typeface = Typeface.DEFAULT_BOLD
         }
         val closeView = TextView(context).apply {
             text = "×"
-            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 24f)
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 20f)
             setTextColor(SECONDARY)
             gravity = Gravity.CENTER
-            setPadding(dp(12), 0, dp(2), 0)
+            setPadding(dp(10), 0, 0, dp(2))
             contentDescription = "Скрыть"
             isClickable = true
             setOnClickListener { onClose() }
@@ -68,57 +70,125 @@ class MatchOverlayView(
         )
 
         cityView.apply {
-            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 22f)
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 17f)
             setTextColor(TEXT)
+            typeface = Typeface.DEFAULT_BOLD
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+        }
+        statusView.apply {
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10f)
             typeface = Typeface.DEFAULT_BOLD
         }
         addressView.apply {
-            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f)
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11f)
             setTextColor(SECONDARY)
             typeface = Typeface.MONOSPACE
-        }
-        detailsView.apply {
-            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
-            setTextColor(SECONDARY)
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
         }
         pingView.apply {
             setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
-            setTextColor(SECONDARY)
+            setTextColor(ACCENT)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            setPadding(dp(8), 0, 0, 0)
         }
 
-        val buttons = LinearLayout(context).apply {
+        val cityRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        cityRow.addView(
+            cityView,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        cityRow.addView(
+            statusView,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = dp(6) },
+        )
+
+        val textColumn = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        textColumn.addView(
+            cityRow,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        textColumn.addView(
+            addressView,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+
+        val mainRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        mainRow.addView(
+            textColumn,
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+        )
+        mainRow.addView(
+            pingView,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+
+        val actions = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
         val openButton = TextView(context).apply {
             text = "Открыть"
-            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f)
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f)
             setTextColor(Color.parseColor("#FF111820"))
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            setPadding(dp(14), dp(9), dp(14), dp(9))
-            background = rounded(ACCENT, 14)
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            background = rounded(ACCENT, 12)
             isClickable = true
             setOnClickListener { onOpen() }
         }
         allowButton.apply {
             text = "Разрешить 5 мин"
-            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f)
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f)
             setTextColor(BLOCKED)
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            setPadding(dp(14), dp(9), dp(14), dp(9))
-            background = rounded(BLOCKED_BG, 14, BLOCKED)
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            background = rounded(BLOCKED_BG, 12, BLOCKED)
             isClickable = true
             visibility = View.GONE
             setOnClickListener { onAllow() }
         }
-        val openParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        openParams.marginEnd = dp(8)
-        buttons.addView(openButton, openParams)
-        buttons.addView(
+        actions.addView(
+            openButton,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        actions.addView(
             allowButton,
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = dp(8) },
         )
 
         card.addView(
@@ -129,39 +199,18 @@ class MatchOverlayView(
             ),
         )
         card.addView(
-            cityView,
+            mainRow,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(6) },
+            ).apply { topMargin = dp(3) },
         )
         card.addView(
-            addressView,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(2) },
-        )
-        card.addView(
-            detailsView,
+            actions,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = dp(8) },
-        )
-        card.addView(
-            pingView,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(2) },
-        )
-        card.addView(
-            buttons,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(12) },
         )
 
         addView(
@@ -174,10 +223,9 @@ class MatchOverlayView(
         titleView.text = if (info.demo) "ПРОВЕРКА КАРТОЧКИ" else "МАТЧ НАЙДЕН"
         cityView.text = info.city ?: "Сервер"
         addressView.text = info.address
-        val status = if (info.blocked) "заблокирован профилем" else "разрешён"
-        detailsView.text = "Профиль: ${info.profile ?: "не выбран"} · $status"
-        detailsView.setTextColor(if (info.blocked) BLOCKED else ALLOWED)
-        pingView.text = "Пинг: ${info.pingText ?: "измеряется…"}"
+        statusView.text = if (info.blocked) "заблокирован" else "разрешён"
+        statusView.setTextColor(if (info.blocked) BLOCKED else ALLOWED)
+        pingView.text = info.pingText ?: "пинг…"
         allowButton.visibility = if (info.blocked) View.VISIBLE else View.GONE
     }
 

@@ -99,10 +99,10 @@ class MatchAlertManager(
                     ip = "154.85.91.153",
                     port = 10003,
                     network = "tcp",
-                    city = "РњРѕСЃРєРІР°",
-                    profile = "РњРѕСЃРєРІР°",
+                    city = "Москва",
+                    profile = "Москва",
                     blocked = false,
-                    pingText = "126 РјСЃ",
+                    pingText = "126 мс",
                     demo = true,
                 ),
             )
@@ -177,8 +177,12 @@ class MatchAlertManager(
             @Suppress("DEPRECATION")
             WindowManager.LayoutParams.TYPE_PHONE
         }
+        val width = minOf(
+            app.resources.displayMetrics.widthPixels - dp(24),
+            dp(340),
+        )
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
+            width,
             WindowManager.LayoutParams.WRAP_CONTENT,
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -206,17 +210,17 @@ class MatchAlertManager(
         val status = app.getString(
             if (info.blocked) R.string.match_found_blocked else R.string.match_found_allowed,
         )
-        val title = "${app.getString(R.string.match_found_title)}: ${info.city ?: "СЃРµСЂРІРµСЂ"}"
+        val title = "${app.getString(R.string.match_found_title)}: ${info.city ?: "сервер"}"
         val text = app.getString(
             R.string.match_found_text,
             info.address,
-            info.profile ?: "Р±РµР· РїСЂРѕС„РёР»СЏ",
+            info.profile ?: "без профиля",
             status,
         )
         val bigText = buildString {
             appendLine(title)
             appendLine(text)
-            append("РџРёРЅРі: ${info.pingText ?: "РёР·РјРµСЂСЏРµС‚СЃСЏвЂ¦"}")
+            append("Пинг: ${info.pingText ?: "измеряется…"}")
         }
 
         val openIntent = PendingIntent.getActivity(
@@ -266,7 +270,7 @@ class MatchAlertManager(
             withContext(Dispatchers.Main) {
                 val active = current ?: return@withContext
                 if (active.key != info.key) return@withContext
-                val updated = active.copy(pingText = "$ms РјСЃ")
+                val updated = active.copy(pingText = "$ms мс")
                 current = updated
                 overlay?.bind(updated)
                 if (notificationId != 0) {
@@ -313,7 +317,7 @@ class MatchAlertManager(
             .putExtra(BlockerController.EXTRA_ALLOW_PORT, info.port)
             .putExtra(BlockerController.EXTRA_TTL, 5 * 60 * 1000L)
         runCatching { app.startService(intent) }
-        Toast.makeText(app, "РЎРµСЂРІРµСЂ ${info.address} СЂР°Р·СЂРµС€С‘РЅ РЅР° 5 РјРёРЅСѓС‚", Toast.LENGTH_SHORT).show()
+        Toast.makeText(app, "Сервер ${info.address} разрешён на 5 минут", Toast.LENGTH_SHORT).show()
     }
 
     private fun isLockedOrScreenOff(): Boolean {
@@ -326,4 +330,3 @@ class MatchAlertManager(
         return (value * app.resources.displayMetrics.density).toInt()
     }
 }
-
