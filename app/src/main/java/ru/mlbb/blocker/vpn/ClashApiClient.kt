@@ -12,7 +12,7 @@ import java.net.URL
 object ClashApiClient {
 
     suspend fun fetch(port: Int, secret: String): List<ConnectionSnapshot> = withContext(Dispatchers.IO) {
-        val connection = (URL("http://127.0.0.1:$port/connections").openConnection() as HttpURLConnection).apply {
+        val connection = (URL("http://localhost:$port/connections").openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 1500
             readTimeout = 1500

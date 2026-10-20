@@ -14,7 +14,7 @@ class PresetsTest {
 
     @Test
     fun allPresetRulesAreValid() {
-        for (preset in listOf(Presets.MOSCOW, Presets.NON_FAR_EAST)) {
+        for (preset in listOf(Presets.MOSCOW, Presets.NOVOSIBIRSK, Presets.NON_FAR_EAST)) {
             for ((value, _) in preset.rules) {
                 assertEquals(value, Cidr.normalize(value))
             }

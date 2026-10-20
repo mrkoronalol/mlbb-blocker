@@ -3,6 +3,7 @@ package ru.mlbb.blocker
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
@@ -11,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.mlbb.blocker.ui.BlockerApp
 import ru.mlbb.blocker.ui.MlbbBlockerTheme
@@ -46,6 +48,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val nightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !nightMode
+            isAppearanceLightNavigationBars = !nightMode
+        }
         setContent {
             MlbbBlockerTheme {
                 val ui = viewModel.ui.collectAsStateWithLifecycle()
@@ -67,6 +75,9 @@ class MainActivity : ComponentActivity() {
                     onClearLogs = viewModel::clearLogs,
                     onFastRejectChange = viewModel::setFastReject,
                     onMatchAlertsChange = viewModel::setMatchAlerts,
+                    onHideStartupAlertsChange = viewModel::setHideStartupAlerts,
+                    onAutoStartChange = viewModel::setAutoStart,
+                    onFinishOnboarding = viewModel::finishOnboarding,
                     onShowMatchDemo = viewModel::showMatchDemo,
                     onRefreshDiagnostics = viewModel::refreshMlbbInstalled,
                     onDownloadGeoIp = viewModel::downloadGeoIp,

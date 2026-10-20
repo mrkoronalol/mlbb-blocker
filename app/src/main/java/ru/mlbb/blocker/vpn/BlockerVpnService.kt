@@ -119,6 +119,7 @@ class BlockerVpnService : VpnService() {
     private fun startBlocking() {
         BlockerRepository.setStatus(BlockerStatus.Starting)
         MonitorRepository.initialize(this)
+        BlocklistStore(this).lastRunning = true
         lastRuleCount = BlocklistStore(this).loadRules().count { it.enabled }
 
         startForegroundCompat(buildNotification(lastRuleCount))
@@ -156,7 +157,12 @@ class BlockerVpnService : VpnService() {
                 scheduleDiscoveryEnd()
                 scheduleAllowExpiry()
                 matchAlertManager?.destroy()
-                matchAlertManager = MatchAlertManager(this@BlockerVpnService, scope)
+                matchAlertManager = MatchAlertManager(
+                    this@BlockerVpnService,
+                    scope,
+                    sessionPort,
+                    sessionSecret,
+                )
                 startConnectionMonitor()
                 startCoreLogMonitor()
             } catch (t: Throwable) {
@@ -191,6 +197,7 @@ class BlockerVpnService : VpnService() {
     private fun stopBlocking() {
         if (!stopping.compareAndSet(false, true)) return
         started.set(false)
+        BlocklistStore(this).lastRunning = false
         startJob?.cancel()
         startJob = null
         discoveryJob?.cancel()
@@ -226,6 +233,7 @@ class BlockerVpnService : VpnService() {
         BlockerRepository.setStatus(BlockerStatus.Error(message))
         BlockerRepository.log("Ошибка запуска: $message")
         started.set(false)
+        BlocklistStore(this).lastRunning = false
         discoveryJob?.cancel()
         discoveryJob = null
         allowExpiryJob?.cancel()

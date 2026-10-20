@@ -3,6 +3,7 @@ package ru.mlbb.blocker.config
 import android.content.Context
 import ru.mlbb.blocker.data.BlocklistStore
 import ru.mlbb.blocker.data.RegionProfiles
+import ru.mlbb.blocker.data.StartupEndpoints
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.security.SecureRandom
@@ -13,10 +14,15 @@ object BlockerConfig {
         val store = BlocklistStore(context)
         val profile = store.selectedProfile?.let(RegionProfiles::byId)
         val profileRules = profile?.rules?.map { it.first }.orEmpty()
-        val rules = (store.activeValues() + profileRules).distinct()
-        val allowRules = (store.activeAllowValues() + profile?.allowedCidrs.orEmpty()).distinct()
+        val rules = store.activeValues().distinct()
+        val allowRules = (
+            store.activeAllowValues() +
+                profile?.allowedCidrs.orEmpty() +
+                StartupEndpoints.CIDRS
+            ).distinct()
         return SingBoxConfigBuilder.build(
             rules = rules,
+            profileRules = profileRules,
             allowRules = allowRules,
             blockMatchPorts = profile?.blockOtherMatchServers == true,
             discoveryMode = store.discoveryMode || System.currentTimeMillis() < store.discoveryUntil,

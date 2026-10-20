@@ -133,6 +133,33 @@ class SingBoxConfigBuilderTest {
     }
 
     @Test
+    fun profileRulesBlockOnlyMatchPorts() {
+        val config = JSONObject(
+            SingBoxConfigBuilder.build(
+                rules = emptyList(),
+                profileRules = listOf("154.85.91.0/24", "146.185.199.0/24"),
+                discoveryMode = false,
+                clashPort = 39090,
+                clashSecret = "test-secret",
+            ),
+        )
+        val rules = config.getJSONObject("route").getJSONArray("rules")
+        var withPort = 0
+        var withRange = 0
+        for (index in 0 until rules.length()) {
+            val rule = rules.getJSONObject(index)
+            if (rule.optString("outbound") != "sink" || !rule.has("ip_cidr")) continue
+            when {
+                rule.has("port") -> withPort++
+                rule.has("port_range") -> withRange++
+                else -> throw AssertionError("Profile CIDR is blocked on all ports")
+            }
+        }
+        assertEquals(1, withPort)
+        assertEquals(1, withRange)
+    }
+
+    @Test
     fun gameProbePort30190AlwaysGoesDirect() {
         val config = JSONObject(
             SingBoxConfigBuilder.build(

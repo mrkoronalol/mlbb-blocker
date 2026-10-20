@@ -20,7 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -97,6 +97,9 @@ fun BlockerApp(
     onClearLogs: () -> Unit,
     onFastRejectChange: (Boolean) -> Unit,
     onMatchAlertsChange: (Boolean) -> Unit,
+    onHideStartupAlertsChange: (Boolean) -> Unit,
+    onAutoStartChange: (Boolean) -> Unit,
+    onFinishOnboarding: () -> Unit,
     onShowMatchDemo: () -> Unit,
     onRefreshDiagnostics: () -> Unit,
     onDownloadGeoIp: () -> Unit,
@@ -133,7 +136,7 @@ fun BlockerApp(
                 navigationIcon = {
                     if (showAbout) {
                         IconButton(onClick = { showAbout = false }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                         }
                     }
                 },
@@ -187,6 +190,7 @@ fun BlockerApp(
                         onToggle = onToggle,
                         onDiscoveryChange = onDiscoveryChange,
                         onSelectProfile = onSelectProfile,
+                        onFinishOnboarding = onFinishOnboarding,
                         onOpenAbout = { showAbout = true },
                     )
                     1 -> MatchScreen(
@@ -202,6 +206,7 @@ fun BlockerApp(
                     )
                     2 -> ConnectionsScreen(
                         connections = ui.connections,
+                        selectedProfile = ui.selectedProfile,
                         pingingKeys = ui.pingingKeys,
                         onPing = onPing,
                         onPingAll = onPingAll,
@@ -224,6 +229,8 @@ fun BlockerApp(
                         onDiscoveryChange = onDiscoveryChange,
                         onFastRejectChange = onFastRejectChange,
                         onMatchAlertsChange = onMatchAlertsChange,
+                        onHideStartupAlertsChange = onHideStartupAlertsChange,
+                        onAutoStartChange = onAutoStartChange,
                         onShowMatchDemo = onShowMatchDemo,
                         onRefreshDiagnostics = onRefreshDiagnostics,
                         onDownloadGeoIp = onDownloadGeoIp,
@@ -257,6 +264,7 @@ private fun HomeScreen(
     onToggle: () -> Unit,
     onDiscoveryChange: (Boolean) -> Unit,
     onSelectProfile: (String) -> Unit,
+    onFinishOnboarding: () -> Unit,
     onOpenAbout: () -> Unit,
 ) {
     Column(
@@ -298,6 +306,10 @@ private fun HomeScreen(
 
         ui.updateInfo?.let { update ->
             UpdateBanner(update = update)
+        }
+
+        if (ui.showOnboarding) {
+            OnboardingCard(onDone = onFinishOnboarding)
         }
 
         Card(
@@ -481,6 +493,37 @@ private fun HomeScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("О приложении и возможностях")
+        }
+    }
+}
+
+@Composable
+private fun OnboardingCard(onDone: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
+        ),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                "Быстрый старт",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                "1. Выдайте разрешение VPN при первом включении.\n" +
+                    "2. Разрешите уведомления и показ поверх игры.\n" +
+                    "3. Выберите профиль и включите блокировку.\n" +
+                    "4. Запустите MLBB.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = onDone) {
+                Text("Понятно")
+            }
         }
     }
 }

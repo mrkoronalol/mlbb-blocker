@@ -104,7 +104,7 @@ fun BlocklistScreen(
                         )
                         Text("Блоклист пуст", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "Добавьте IP вручную, импортируйте список или используйте пресет из PCAP.",
+                            "Добавьте IP вручную, импортируйте список или используйте региональный пресет.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -211,13 +211,13 @@ private fun PresetCard(onAddPreset: (BlockPreset) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                "IP из вашего PCAP",
+                "Региональные пресеты",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                "Хабаровск: 92.223.80.21 — 26 мс, 92.223.80.65 — 38 мс. Москва: 154.85.91.153 — 126 мс.",
+                "Готовые наборы IP для Москвы, Новосибирска и ДВ. Их можно добавить в блоклист или настроить правила вручную. Остальные регионы видны в «Мониторе».",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -226,14 +226,20 @@ private fun PresetCard(onAddPreset: (BlockPreset) -> Unit) {
                     onClick = { onAddPreset(Presets.MOSCOW) },
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Москва (3)")
+                    Text("Москва")
                 }
-                OutlinedButton(
-                    onClick = { onAddPreset(Presets.NON_FAR_EAST) },
+                Button(
+                    onClick = { onAddPreset(Presets.NOVOSIBIRSK) },
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Всё, кроме ДВ (10)")
+                    Text("Новосибирск")
                 }
+            }
+            OutlinedButton(
+                onClick = { onAddPreset(Presets.NON_FAR_EAST) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Заблокировать всё, кроме ДВ")
             }
         }
     }

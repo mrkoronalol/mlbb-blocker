@@ -42,6 +42,8 @@ fun SettingsScreen(
     onDiscoveryChange: (Boolean) -> Unit,
     onFastRejectChange: (Boolean) -> Unit,
     onMatchAlertsChange: (Boolean) -> Unit,
+    onHideStartupAlertsChange: (Boolean) -> Unit,
+    onAutoStartChange: (Boolean) -> Unit,
     onShowMatchDemo: () -> Unit,
     onRefreshDiagnostics: () -> Unit,
     onDownloadGeoIp: () -> Unit,
@@ -144,6 +146,33 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Скрывать стартовые подключения", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Не показывать карточку, если подключение закрылось за 2,5 секунды.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = ui.hideStartupAlerts,
+                    onCheckedChange = onHideStartupAlertsChange,
+                )
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Автозапуск после перезагрузки", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Запускать VPN автоматически, если блокировка была включена до перезагрузки.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = ui.autoStart, onCheckedChange = onAutoStartChange)
+            }
         }
 
         DiagnosticsCard(ui = ui, onRefresh = onRefreshDiagnostics)
@@ -194,28 +223,6 @@ fun SettingsScreen(
             )
             Text(
                 "Пока блокировка включена, приложение собирает все IP подключений MLBB и сохраняет их между запусками. Во вкладке «Монитор» можно фильтровать серверы по регионам, измерить TCP-пинг и сразу заблокировать IP или подсеть.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        SettingsCard {
-            Text(
-                "Из вашего PCAP",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                "Хабаровск: 92.223.80.21 — 26 мс, 92.223.80.65 — 38 мс\n" +
-                    "Новосибирск: 146.185.199.88 — 84 мс\n" +
-                    "Екатеринбург: 92.223.91.7 — 116 мс\n" +
-                    "Москва: 154.85.91.153 — 126 мс (матч-сервер)\n" +
-                    "Ростов-на-Дону: 146.185.197.81 — 148 мс",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                "В PCAP игра установила матч-соединение с Москвой, хотя Хабаровск отвечал за 26 мс. Пресеты блокировки находятся во вкладке «Блоклист».",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

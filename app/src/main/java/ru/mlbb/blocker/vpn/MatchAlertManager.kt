@@ -20,18 +20,20 @@ import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.atomic.AtomicBoolean
 import ru.mlbb.blocker.MainActivity
 import ru.mlbb.blocker.MlbbBlockerApp
 import ru.mlbb.blocker.R
+import ru.mlbb.blocker.data.BlockerRepository
 import ru.mlbb.blocker.data.BlocklistStore
 import ru.mlbb.blocker.data.Cidr
 import ru.mlbb.blocker.data.GamePorts
 import ru.mlbb.blocker.data.KnownServers
 import ru.mlbb.blocker.data.NetworkPing
 import ru.mlbb.blocker.data.RegionProfiles
+import ru.mlbb.blocker.data.StartupEndpoints
 import ru.mlbb.blocker.data.geo.GeoIpRepository
 
 data class MatchAlertInfo(
@@ -51,6 +53,8 @@ data class MatchAlertInfo(
 class MatchAlertManager(
     context: Context,
     private val scope: CoroutineScope,
+    private val clashPort: Int = 0,
+    private val clashSecret: String = "",
 ) {
     private val app = context.applicationContext
     private val store = BlocklistStore(app)
@@ -61,7 +65,6 @@ class MatchAlertManager(
     private val cooldownLock = Any()
     private val lastAlerts = mutableMapOf<String, Long>()
     private var lastGlobalAlert = 0L
-    private val firstMatchSkipped = AtomicBoolean(false)
 
     private var overlay: MatchOverlayView? = null
     private var hideRunnable: Runnable? = null
@@ -72,11 +75,25 @@ class MatchAlertManager(
     fun onMatch(ip: String, port: Int, network: String, blocked: Boolean) {
         if (!store.matchAlerts) return
         if (!GamePorts.isMatchPort(port) || Cidr.isPrivate(ip)) return
-        if (firstMatchSkipped.compareAndSet(false, true)) return
+        if (StartupEndpoints.isMainConnection(ip, port)) return
         val key = "$ip:$port"
-        if (!allowAlert(key)) return
 
         scope.launch(Dispatchers.IO) {
+            if (store.hideStartupAlerts && clashPort > 0) {
+                delay(2_500L)
+                val active = runCatching {
+                    ClashApiClient.fetch(clashPort, clashSecret)
+                }.getOrNull()
+                val stillActive = active?.any {
+                    it.network == network && it.ip == ip && it.port == port
+                } ?: true
+                if (!stillActive) {
+                    BlockerRepository.log("Стартовое подключение $ip:$port скрыто")
+                    return@launch
+                }
+            }
+            if (!allowAlert(key)) return@launch
+
             val known = KnownServers.lookup(ip)
             val city = GeoIpRepository.lookup(ip)?.city ?: known?.city
             val profile = store.selectedProfile?.let(RegionProfiles::byId)?.title

@@ -70,6 +70,9 @@ data class UiState(
     val blockedAttempts: List<BlockedAttemptEntity> = emptyList(),
     val currentMatch: ConnectionStat? = null,
     val matchAlerts: Boolean = true,
+    val hideStartupAlerts: Boolean = true,
+    val autoStart: Boolean = true,
+    val showOnboarding: Boolean = false,
     val overlayPermissionGranted: Boolean = false,
     val updateInfo: UpdateInfo? = null,
     val updateChecking: Boolean = false,
@@ -99,6 +102,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             geoIpStatus = GeoIpRepository.status.value,
             allowRules = store.loadAllowRules(),
             matchAlerts = store.matchAlerts,
+            hideStartupAlerts = store.hideStartupAlerts,
+            autoStart = store.autoStart,
+            showOnboarding = !store.onboardingDone,
             overlayPermissionGranted = runCatching { Settings.canDrawOverlays(application) }
                 .getOrDefault(false),
         ),
@@ -422,6 +428,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     .getOrDefault(false),
                 currentUserId = android.os.Process.myUid() / 100000,
                 matchAlerts = store.matchAlerts,
+                hideStartupAlerts = store.hideStartupAlerts,
+            autoStart = store.autoStart,
+            showOnboarding = !store.onboardingDone,
                 overlayPermissionGranted = runCatching {
                     Settings.canDrawOverlays(getApplication())
                 }.getOrDefault(false),
@@ -439,6 +448,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         store.matchAlerts = enabled
         _ui.update { it.copy(matchAlerts = enabled) }
         showMessage(if (enabled) "Уведомления о матче включены" else "Уведомления о матче выключены")
+    }
+
+    fun setHideStartupAlerts(enabled: Boolean) {
+        store.hideStartupAlerts = enabled
+        _ui.update { it.copy(hideStartupAlerts = enabled) }
+    }
+
+    fun setAutoStart(enabled: Boolean) {
+        store.autoStart = enabled
+        _ui.update { it.copy(autoStart = enabled) }
+    }
+
+    fun finishOnboarding() {
+        store.onboardingDone = true
+        _ui.update { it.copy(showOnboarding = false) }
     }
 
     fun showMatchDemo() {

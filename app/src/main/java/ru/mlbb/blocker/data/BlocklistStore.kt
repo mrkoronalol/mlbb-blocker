@@ -32,6 +32,30 @@ class BlocklistStore(context: Context) {
             prefs.edit().putBoolean(KEY_MATCH_ALERTS, value).apply()
         }
 
+    var hideStartupAlerts: Boolean
+        get() = prefs.getBoolean(KEY_HIDE_STARTUP_ALERTS, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_HIDE_STARTUP_ALERTS, value).apply()
+        }
+
+    var autoStart: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_START, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_AUTO_START, value).apply()
+        }
+
+    var onboardingDone: Boolean
+        get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply()
+        }
+
+    var lastRunning: Boolean
+        get() = prefs.getBoolean(KEY_LAST_RUNNING, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_LAST_RUNNING, value).apply()
+        }
+
     var discoveryUntil: Long
         get() = prefs.getLong(KEY_DISCOVERY_UNTIL, 0L)
         set(value) {
@@ -218,6 +242,10 @@ class BlocklistStore(context: Context) {
         private const val KEY_REGIONS = "enabled_regions"
         private const val KEY_SELECTED_PROFILE = "selected_profile"
         private const val KEY_MATCH_ALERTS = "match_alerts"
+        private const val KEY_HIDE_STARTUP_ALERTS = "hide_startup_alerts"
+        private const val KEY_AUTO_START = "auto_start"
+        private const val KEY_LAST_RUNNING = "last_running"
+        private const val KEY_ONBOARDING_DONE = "onboarding_done"
         private const val KEY_STABILIZATION_LEGACY = "ping_stabilization"
     }
 }

@@ -4,10 +4,17 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import ru.mlbb.blocker.data.BlocklistStore
+import ru.mlbb.blocker.data.UpdateWorker
 import ru.mlbb.blocker.data.db.MonitorRepository
 import ru.mlbb.blocker.data.geo.GeoIpRepository
 import ru.mlbb.blocker.data.RegionProfiles
+import java.util.concurrent.TimeUnit
 
 class MlbbBlockerApp : Application() {
 
@@ -52,6 +59,22 @@ class MlbbBlockerApp : Application() {
                 ),
             )
         }
+        scheduleUpdateChecks()
+    }
+
+    private fun scheduleUpdateChecks() {
+        val request = PeriodicWorkRequestBuilder<UpdateWorker>(12, TimeUnit.HOURS)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build(),
+            )
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "mlbb-update-check",
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
     }
 
     private fun seedFirstRun() {

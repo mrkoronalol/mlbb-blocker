@@ -12,8 +12,15 @@ object Presets {
     val MOSCOW = BlockPreset(
         id = "moscow",
         title = "Москва",
-        description = "Матч-сервер 154.85.91.0/24 и два московских адреса из вашего PCAP.",
+        description = "Матч-сервер 154.85.91.0/24 и два московских адреса.",
         rules = RegionProfiles.MOSCOW_SERVERS,
+    )
+
+    val NOVOSIBIRSK = BlockPreset(
+        id = "novosibirsk",
+        title = "Новосибирск",
+        description = "Новосибирские серверы 146.185.199.0/24.",
+        rules = RegionProfiles.NOVOSIBIRSK_SERVERS,
     )
 
     val NON_FAR_EAST = BlockPreset(

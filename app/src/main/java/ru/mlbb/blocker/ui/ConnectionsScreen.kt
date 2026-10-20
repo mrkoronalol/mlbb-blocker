@@ -19,10 +19,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,18 +44,12 @@ import ru.mlbb.blocker.data.ConnectionStat
 import ru.mlbb.blocker.data.KnownServer
 import ru.mlbb.blocker.data.KnownServerKind
 import ru.mlbb.blocker.data.KnownServers
-
-private val REGION_FILTERS = listOf(
-    "all" to "Все",
-    "far_east" to "ДВ",
-    "moscow" to "Москва",
-    "novosibirsk" to "Новосибирск",
-    "other" to "Другие",
-)
+import ru.mlbb.blocker.data.RegionProfiles
 
 @Composable
 fun ConnectionsScreen(
     connections: List<ConnectionStat>,
+    selectedProfile: String?,
     pingingKeys: Set<String>,
     onPing: (ConnectionStat) -> Unit,
     onPingAll: () -> Unit,
@@ -62,11 +59,50 @@ fun ConnectionsScreen(
 ) {
     val context = LocalContext.current
     var filter by rememberSaveable { mutableStateOf("all") }
-    val filtered = if (filter == "all") {
-        connections
-    } else {
-        connections.filter { regionCategory(it) == filter }
+    var query by rememberSaveable { mutableStateOf("") }
+    var sort by rememberSaveable { mutableStateOf("recent") }
+    var sortMenu by rememberSaveable { mutableStateOf(false) }
+
+    val profileCategory = when (selectedProfile) {
+        RegionProfiles.ID_MOSCOW -> "moscow"
+        RegionProfiles.ID_FAR_EAST -> "far_east"
+        RegionProfiles.ID_NOVOSIBIRSK -> "novosibirsk"
+        else -> null
     }
+    val filters = buildList {
+        add("all" to "Все")
+        listOf(
+            "moscow" to "Москва",
+            "far_east" to "ДВ",
+            "novosibirsk" to "Новосибирск",
+            "other" to "Другие",
+        ).forEach { (id, label) ->
+            val count = connections.count { regionCategory(it) == id }
+            if (count > 0) add(id to label)
+        }
+        connections.mapNotNull { it.country?.takeIf { value -> value.isNotBlank() } }
+            .distinct()
+            .take(4)
+            .forEach { country -> add("geo:$country" to country) }
+    }
+
+    val searched = connections.filter { connection ->
+        val value = query.trim()
+        value.isEmpty() || listOf(connection.ip, connection.host, connection.city, connection.country)
+            .any { it?.contains(value, ignoreCase = true) == true }
+    }
+    val filtered = searched.filter { matchesFilter(it, filter) }
+    val sorted = when (sort) {
+        "ping" -> filtered.sortedWith(compareBy(nullsLast()) { connection: ConnectionStat -> connection.pingMs })
+        "region" -> filtered.sortedBy { (it.city ?: it.country ?: "").lowercase() }
+        else -> filtered.sortedByDescending { it.lastSeen }
+    }
+    val preferred = if (profileCategory != null) {
+        sorted.filter { regionCategory(it) == profileCategory }.ifEmpty { sorted }
+    } else {
+        sorted
+    }
+    val best = preferred.filter { it.pingMs != null }.minByOrNull { it.pingMs!! }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -80,11 +116,7 @@ fun ConnectionsScreen(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    if (filter == "all") {
-                        "Собрано: ${connections.size}. Все регионы."
-                    } else {
-                        "Показано: ${filtered.size} из ${connections.size}."
-                    },
+                    "Собрано: ${connections.size}. Все регионы.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -107,6 +139,53 @@ fun ConnectionsScreen(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
         )
 
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            placeholder = { Text("Поиск по IP, хосту или городу") },
+            leadingIcon = {
+                Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
+            },
+            singleLine = true,
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box {
+                TextButton(onClick = { sortMenu = true }) {
+                    Text(
+                        when (sort) {
+                            "ping" -> "Сортировка: пинг"
+                            "region" -> "Сортировка: регион"
+                            else -> "Сортировка: новые"
+                        },
+                    )
+                }
+                DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Сначала новые") },
+                        onClick = { sort = "recent"; sortMenu = false },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("По пингу") },
+                        onClick = { sort = "ping"; sortMenu = false },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("По региону") },
+                        onClick = { sort = "region"; sortMenu = false },
+                    )
+                }
+            }
+            Text(
+                "Показано: ${sorted.size}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
         if (connections.isNotEmpty()) {
             Row(
                 modifier = Modifier
@@ -115,11 +194,11 @@ fun ConnectionsScreen(
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                REGION_FILTERS.forEach { (id, label) ->
+                filters.forEach { (id, label) ->
                     val count = if (id == "all") {
                         connections.size
                     } else {
-                        connections.count { regionCategory(it) == id }
+                        connections.count { matchesFilter(it, id) }
                     }
                     FilterChip(
                         selected = filter == id,
@@ -130,36 +209,48 @@ fun ConnectionsScreen(
             }
         }
 
-        when {
-            connections.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(40.dp),
+        if (best != null) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+                ),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Лучший по пингу",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            "Пока ничего не собрано",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            "Включите блокировку и запустите игру. Все IP будут сохраняться здесь автоматически.",
+                            "${best.city ?: best.ip} · ${best.displayAddress} · ${best.pingMs} мс",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                    TextButton(
+                        onClick = { onPing(best) },
+                        enabled = best.key !in pingingKeys,
+                    ) {
+                        Text("Пинг")
                     }
                 }
             }
+        }
 
-            filtered.isEmpty() -> {
+        when {
+            connections.isEmpty() -> {
+                EmptyMonitor()
+            }
+
+            sorted.isEmpty() -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        "В этой категории пока нет серверов",
+                        if (query.isNotBlank()) "Ничего не найдено" else "В этой категории пока нет серверов",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -178,7 +269,7 @@ fun ConnectionsScreen(
                                 onClick = {
                                     copyToClipboard(
                                         context,
-                                        filtered.joinToString("\n") { it.displayAddress },
+                                        sorted.joinToString("\n") { it.displayAddress },
                                     )
                                     onShowMessage("IP скопированы в буфер обмена")
                                 },
@@ -188,7 +279,7 @@ fun ConnectionsScreen(
                             }
                         }
                     }
-                    items(filtered, key = { it.key }) { connection ->
+                    items(sorted, key = { it.key }) { connection ->
                         ConnectionCard(
                             connection = connection,
                             pingInProgress = connection.key in pingingKeys,
@@ -198,6 +289,29 @@ fun ConnectionsScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun EmptyMonitor() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(40.dp),
+            )
+            Text("Пока ничего не собрано", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Включите блокировку и запустите игру. Все IP будут сохраняться здесь автоматически.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -320,6 +434,15 @@ private fun regionCategory(connection: ConnectionStat): String {
             city.contains("Владивост", ignoreCase = true) -> "far_east"
         else -> "other"
     }
+}
+
+private fun matchesFilter(connection: ConnectionStat, filter: String): Boolean {
+    if (filter == "all") return true
+    if (filter.startsWith("geo:")) {
+        val country = filter.removePrefix("geo:")
+        return connection.country == country || connection.city == country
+    }
+    return regionCategory(connection) == filter
 }
 
 private fun pingLabel(connection: ConnectionStat, inProgress: Boolean): String {

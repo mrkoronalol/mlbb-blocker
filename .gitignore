@@ -16,3 +16,4 @@ dist/
 captures/
 .externalNativeBuild/
 .cxx/
+keystore.properties
