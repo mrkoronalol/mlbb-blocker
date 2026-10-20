@@ -89,6 +89,12 @@ object SingBoxConfigBuilder {
                     .put("outbound", "direct"),
             )
         }
+        routeRules.put(
+            JSONObject()
+                .put("port", JSONArray().put(30190))
+                .put("action", "route")
+                .put("outbound", "direct"),
+        )
         if (!discoveryMode && rules.isNotEmpty()) {
             routeRules.put(
                 JSONObject()

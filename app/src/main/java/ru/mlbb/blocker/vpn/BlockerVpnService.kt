@@ -45,6 +45,7 @@ class BlockerVpnService : VpnService() {
     companion object {
         private const val TAG = "BlockerVpnService"
         private const val NOTIFICATION_ID = 1001
+        private const val STARTUP_GRACE_MS = 60_000L
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -59,6 +60,7 @@ class BlockerVpnService : VpnService() {
     private var matchAlertManager: MatchAlertManager? = null
     private var discoveryJob: Job? = null
     private var allowExpiryJob: Job? = null
+    private var startupGraceJob: Job? = null
     private var coreLogMonitor: CoreLogMonitor? = null
 
     private var sessionPort: Int = 0
@@ -119,7 +121,9 @@ class BlockerVpnService : VpnService() {
     private fun startBlocking() {
         BlockerRepository.setStatus(BlockerStatus.Starting)
         MonitorRepository.initialize(this)
-        lastRuleCount = BlocklistStore(this).loadRules().count { it.enabled }
+        val startupStore = BlocklistStore(this)
+        startupStore.startupGraceUntil = System.currentTimeMillis() + STARTUP_GRACE_MS
+        lastRuleCount = startupStore.loadRules().count { it.enabled }
 
         startForegroundCompat(buildNotification(lastRuleCount))
 
@@ -155,6 +159,7 @@ class BlockerVpnService : VpnService() {
                 BlockerRepository.log("Блокировка запущена. Правил: $lastRuleCount, режим обнаружения: ${BlocklistStore(this@BlockerVpnService).discoveryMode}")
                 scheduleDiscoveryEnd()
                 scheduleAllowExpiry()
+                scheduleStartupGraceEnd()
                 matchAlertManager?.destroy()
                 matchAlertManager = MatchAlertManager(this@BlockerVpnService, scope)
                 startConnectionMonitor()
@@ -197,6 +202,9 @@ class BlockerVpnService : VpnService() {
         discoveryJob = null
         allowExpiryJob?.cancel()
         allowExpiryJob = null
+        startupGraceJob?.cancel()
+        startupGraceJob = null
+        BlocklistStore(this).startupGraceUntil = 0
         coreLogMonitor?.stop()
         coreLogMonitor = null
         matchAlertManager?.destroy()
@@ -230,6 +238,9 @@ class BlockerVpnService : VpnService() {
         discoveryJob = null
         allowExpiryJob?.cancel()
         allowExpiryJob = null
+        startupGraceJob?.cancel()
+        startupGraceJob = null
+        BlocklistStore(this).startupGraceUntil = 0
         coreLogMonitor?.stop()
         coreLogMonitor = null
         matchAlertManager?.destroy()
@@ -475,6 +486,22 @@ class BlockerVpnService : VpnService() {
         }
     }
 
+    private fun scheduleStartupGraceEnd() {
+        startupGraceJob?.cancel()
+        startupGraceJob = null
+        val store = BlocklistStore(this)
+        val wait = store.startupGraceUntil - System.currentTimeMillis()
+        if (wait <= 0) return
+        BlockerRepository.log("Первые 60 секунд трафик MLBB не блокируется, чтобы игра запустилась")
+        startupGraceJob = scope.launch {
+            delay(wait + 300)
+            if (stopping.get()) return@launch
+            store.startupGraceUntil = 0
+            BlockerRepository.log("Стартовое окно закончилось, профиль снова применяется")
+            reloadBlocking()
+        }
+    }
+
     private fun startConnectionMonitor() {
         connectionMonitor?.stop()
         connectionMonitor = ConnectionMonitor(
@@ -562,6 +589,8 @@ class BlockerVpnService : VpnService() {
         discoveryJob = null
         allowExpiryJob?.cancel()
         allowExpiryJob = null
+        startupGraceJob?.cancel()
+        startupGraceJob = null
         coreLogMonitor?.stop()
         coreLogMonitor = null
         matchAlertManager?.destroy()
