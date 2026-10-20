@@ -49,7 +49,7 @@ data class UiState(
     val mlbbInstalled: Boolean = true,
     val message: String? = null,
     val pingingKeys: Set<String> = emptySet(),
-    val enabledRegions: Set<String> = emptySet(),
+    val selectedProfile: String? = null,
     val profileRuleCount: Int = 0,
     val effectiveRuleCount: Int = 0,
     val fastReject: Boolean = true,
@@ -77,7 +77,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             rules = store.loadRules(),
             discovery = store.discoveryMode,
             mlbbInstalled = BlockerController.isMlbbInstalled(application),
-            enabledRegions = store.enabledRegions,
+            selectedProfile = store.selectedProfile,
             profileRuleCount = profileValues().size,
             effectiveRuleCount = effectiveRuleCount(),
             fastReject = store.fastReject,
@@ -122,14 +122,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _ui.update { it.copy(blockedAttempts = attempts) }
             }
         }
+        var geoEnriched = false
         viewModelScope.launch {
             GeoIpRepository.status.collect { status ->
                 _ui.update { it.copy(geoIpStatus = status) }
-            }
-        }
-        viewModelScope.launch {
-            if (GeoIpRepository.status.value is GeoIpStatus.Ready) {
-                MonitorRepository.enrichGeoInfo { GeoIpRepository.lookup(it) }
+                if (status is GeoIpStatus.Ready && !geoEnriched) {
+                    geoEnriched = true
+                    MonitorRepository.enrichGeoInfo { GeoIpRepository.lookup(it) }
+                }
             }
         }
         viewModelScope.launch {
@@ -191,7 +191,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun startMatch(gamePackage: String) {
         viewModelScope.launch {
-            val id = MonitorRepository.startMatchSession(gamePackage, store.enabledRegions)
+            val profileIds = store.selectedProfile?.let { setOf(it) } ?: emptySet()
+            val id = MonitorRepository.startMatchSession(gamePackage, profileIds)
             _ui.update { it.copy(activeMatchId = id.takeIf { value -> value > 0 }) }
         }
     }
@@ -245,16 +246,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         showMessage("Результат матча сохранён")
     }
 
-    fun setRegionEnabled(profileId: String, enabled: Boolean) {
+    fun selectProfile(profileId: String) {
         val profile = RegionProfiles.byId(profileId) ?: return
-        store.setRegionEnabled(profileId, enabled)
+        if (store.selectedProfile == profileId) return
+        store.selectProfile(profileId)
         refreshRules()
         reloadIfRunning()
         showMessage(
-            getApplication<Application>().getString(
-                if (enabled) R.string.region_enabled else R.string.region_disabled,
-                profile.title,
-            ),
+            getApplication<Application>().getString(R.string.region_enabled, profile.title),
         )
     }
 
@@ -430,7 +429,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             it.copy(
                 rules = store.loadRules(),
                 discovery = store.discoveryMode,
-                enabledRegions = store.enabledRegions,
+                selectedProfile = store.selectedProfile,
                 profileRuleCount = profileValues().size,
                 effectiveRuleCount = effectiveRuleCount(),
                 fastReject = store.fastReject,
@@ -442,10 +441,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun profileValues(): Set<String> {
-        return RegionProfiles.all
-            .filter { it.id in store.enabledRegions }
-            .flatMap { profile -> profile.rules.map { it.first } }
-            .toSet()
+        return store.selectedProfile
+            ?.let(RegionProfiles::byId)
+            ?.rules
+            ?.map { it.first }
+            ?.toSet()
+            ?: emptySet()
     }
 
     private fun effectiveRuleCount(): Int {

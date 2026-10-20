@@ -1,6 +1,8 @@
 package ru.mlbb.blocker.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
@@ -31,6 +35,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -46,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -62,6 +68,7 @@ import ru.mlbb.blocker.UiState
 import ru.mlbb.blocker.data.BlockPreset
 import ru.mlbb.blocker.data.BlockerStatus
 import ru.mlbb.blocker.data.ConnectionStat
+import ru.mlbb.blocker.data.RegionProfile
 import ru.mlbb.blocker.data.RegionProfiles
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,7 +77,7 @@ fun BlockerApp(
     ui: UiState,
     onToggle: () -> Unit,
     onDiscoveryChange: (Boolean) -> Unit,
-    onRegionToggle: (String, Boolean) -> Unit,
+    onSelectProfile: (String) -> Unit,
     onAddRule: (String, String) -> Boolean,
     onAddRules: (String) -> Int,
     onAddPreset: (BlockPreset) -> Unit,
@@ -95,6 +102,7 @@ fun BlockerApp(
     onShowMessage: (String) -> Unit,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var showAbout by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(ui.message) {
@@ -110,9 +118,23 @@ fun BlockerApp(
             TopAppBar(
                 title = {
                     Text(
-                        text = stringResource(R.string.main_title),
+                        text = if (showAbout) "О приложении" else stringResource(R.string.main_title),
                         fontWeight = FontWeight.SemiBold,
                     )
+                },
+                navigationIcon = {
+                    if (showAbout) {
+                        IconButton(onClick = { showAbout = false }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        }
+                    }
+                },
+                actions = {
+                    if (!showAbout) {
+                        IconButton(onClick = { showAbout = true }) {
+                            Icon(Icons.Default.Info, contentDescription = "О приложении")
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -121,56 +143,83 @@ fun BlockerApp(
             )
         },
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                NavigationItem(0, tab, "Главная", Icons.Default.Home) { tab = it }
-                NavigationItem(1, tab, "Матч", Icons.Default.PlayArrow) { tab = it }
-                NavigationItem(2, tab, "Мониторинг", Icons.Default.Search) { tab = it }
-                NavigationItem(3, tab, "Блоклист", Icons.Default.Lock) { tab = it }
-                NavigationItem(4, tab, "Настройки", Icons.Default.Settings) { tab = it }
+            if (!showAbout) {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                    NavigationItem(0, tab, "Главная", Icons.Default.Home) {
+                        showAbout = false
+                        tab = it
+                    }
+                    NavigationItem(1, tab, "Матч", Icons.Default.PlayArrow) {
+                        showAbout = false
+                        tab = it
+                    }
+                    NavigationItem(2, tab, "Мониторинг", Icons.Default.Search) {
+                        showAbout = false
+                        tab = it
+                    }
+                    NavigationItem(3, tab, "Блоклист", Icons.Default.Lock) {
+                        showAbout = false
+                        tab = it
+                    }
+                    NavigationItem(4, tab, "Настройки", Icons.Default.Settings) {
+                        showAbout = false
+                        tab = it
+                    }
+                }
             }
         },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when (tab) {
-                0 -> HomeScreen(ui, onToggle, onDiscoveryChange, onRegionToggle)
-                1 -> MatchScreen(
-                    ui = ui,
-                    onStartGame = onStartGame,
-                    onRegionToggle = onRegionToggle,
-                    onFastRejectChange = onFastRejectChange,
-                    onStartDiscovery = onStartDiscovery,
-                    onStopDiscovery = onStopDiscovery,
-                    onMatchResult = onMatchResult,
-                    onAllow = onAllow,
-                    onRemoveAllow = onRemoveAllow,
-                )
-                2 -> ConnectionsScreen(
-                    connections = ui.connections,
-                    pingingKeys = ui.pingingKeys,
-                    onPing = onPing,
-                    onPingAll = onPingAll,
-                    onBlock = onAddConnection,
-                    onClear = onClearConnections,
-                    onShowMessage = onShowMessage,
-                )
-                3 -> BlocklistScreen(
-                    rules = ui.rules,
-                    onAddRule = onAddRule,
-                    onAddRules = onAddRules,
-                    onAddPreset = onAddPreset,
-                    onRemoveRule = onRemoveRule,
-                    onSetRuleEnabled = onSetRuleEnabled,
-                    onClearRules = onClearRules,
-                    onShowMessage = onShowMessage,
-                )
-                else -> SettingsScreen(
-                    ui = ui,
-                    onDiscoveryChange = onDiscoveryChange,
-                    onFastRejectChange = onFastRejectChange,
-                    onRefreshDiagnostics = onRefreshDiagnostics,
-                    onDownloadGeoIp = onDownloadGeoIp,
-                    onClearLogs = onClearLogs,
-                )
+            if (showAbout) {
+                AboutScreen()
+            } else {
+                when (tab) {
+                    0 -> HomeScreen(
+                        ui = ui,
+                        onToggle = onToggle,
+                        onDiscoveryChange = onDiscoveryChange,
+                        onSelectProfile = onSelectProfile,
+                        onOpenAbout = { showAbout = true },
+                    )
+                    1 -> MatchScreen(
+                        ui = ui,
+                        onStartGame = onStartGame,
+                        onSelectProfile = onSelectProfile,
+                        onFastRejectChange = onFastRejectChange,
+                        onStartDiscovery = onStartDiscovery,
+                        onStopDiscovery = onStopDiscovery,
+                        onMatchResult = onMatchResult,
+                        onAllow = onAllow,
+                        onRemoveAllow = onRemoveAllow,
+                    )
+                    2 -> ConnectionsScreen(
+                        connections = ui.connections,
+                        pingingKeys = ui.pingingKeys,
+                        onPing = onPing,
+                        onPingAll = onPingAll,
+                        onBlock = onAddConnection,
+                        onClear = onClearConnections,
+                        onShowMessage = onShowMessage,
+                    )
+                    3 -> BlocklistScreen(
+                        rules = ui.rules,
+                        onAddRule = onAddRule,
+                        onAddRules = onAddRules,
+                        onAddPreset = onAddPreset,
+                        onRemoveRule = onRemoveRule,
+                        onSetRuleEnabled = onSetRuleEnabled,
+                        onClearRules = onClearRules,
+                        onShowMessage = onShowMessage,
+                    )
+                    else -> SettingsScreen(
+                        ui = ui,
+                        onDiscoveryChange = onDiscoveryChange,
+                        onFastRejectChange = onFastRejectChange,
+                        onRefreshDiagnostics = onRefreshDiagnostics,
+                        onDownloadGeoIp = onDownloadGeoIp,
+                        onClearLogs = onClearLogs,
+                    )
+                }
             }
         }
     }
@@ -197,7 +246,8 @@ private fun HomeScreen(
     ui: UiState,
     onToggle: () -> Unit,
     onDiscoveryChange: (Boolean) -> Unit,
-    onRegionToggle: (String, Boolean) -> Unit,
+    onSelectProfile: (String) -> Unit,
+    onOpenAbout: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -285,35 +335,23 @@ private fun HomeScreen(
             }
         }
 
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-            ),
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    "Профили регионов",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                "Профиль блокировки",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                "Выберите один профиль до поиска матча. «Москва» и «Новосибирск» разрешают только выбранный регион и блокируют остальные матч-серверы.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            RegionProfiles.all.forEach { profile ->
+                ProfileCard(
+                    profile = profile,
+                    selected = ui.selectedProfile == profile.id,
+                    onClick = { onSelectProfile(profile.id) },
                 )
-                Text(
-                    "Работают постоянно, пока включена блокировка. Включайте нужные до поиска матча.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-                RegionProfiles.all.forEach { profile ->
-                    ToggleRow(
-                        title = profile.title,
-                        description = profile.description,
-                        checked = profile.id in ui.enabledRegions,
-                        enabled = true,
-                        onCheckedChange = { onRegionToggle(profile.id, it) },
-                    )
-                }
             }
         }
 
@@ -343,12 +381,12 @@ private fun HomeScreen(
                 title = "Обнаружение включено",
                 text = "Правила не применяются. Зайдите в игру, затем откройте вкладку «Мониторинг» и заблокируйте московские IP.",
             )
-        } else if (ui.rules.isEmpty()) {
+        } else if (ui.selectedProfile == null) {
             NoticeCard(
                 icon = Icons.Default.Warning,
                 color = Color(0xFFFFC857),
-                title = "Блоклист пуст",
-                text = stringResource(R.string.error_empty_blocklist),
+                title = "Профиль не выбран",
+                text = "Выберите профиль блокировки: Москва, ДВ или Новосибирск.",
             )
         }
 
@@ -420,6 +458,96 @@ private fun HomeScreen(
                     "Блокировка не гарантирует смену региона: MLBB может выбрать сервер по аккаунту или матчмейкингу.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        OutlinedButton(
+            onClick = onOpenAbout,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("О приложении и возможностях")
+        }
+    }
+}
+
+private fun profileAccent(profile: RegionProfile): Color = when (profile.id) {
+    RegionProfiles.ID_MOSCOW -> Color(0xFF4C7DFF)
+    RegionProfiles.ID_FAR_EAST -> Color(0xFF2FA36B)
+    else -> Color(0xFFE08A2E)
+}
+
+@Composable
+internal fun ProfileCard(
+    profile: RegionProfile,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val accent = profileAccent(profile)
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) accent.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surface,
+        ),
+        border = BorderStroke(
+            width = if (selected) 1.5.dp else 1.dp,
+            color = if (selected) accent.copy(alpha = 0.65f)
+            else MaterialTheme.colorScheme.outline.copy(alpha = 0.20f),
+        ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    profile.badge,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = accent,
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        profile.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    if (selected) {
+                        Text(
+                            "Активен",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = accent,
+                        )
+                    }
+                }
+                Text(
+                    profile.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (selected) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(22.dp),
                 )
             }
         }

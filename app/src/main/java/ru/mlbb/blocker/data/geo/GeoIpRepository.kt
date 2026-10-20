@@ -20,6 +20,7 @@ import java.util.zip.GZIPInputStream
 
 sealed interface GeoIpStatus {
     data object NotDownloaded : GeoIpStatus
+    data object Preparing : GeoIpStatus
     data class Downloading(val progress: Int, val received: Long) : GeoIpStatus
     data class Ready(val month: String) : GeoIpStatus
     data class Error(val message: String) : GeoIpStatus
@@ -35,11 +36,14 @@ object GeoIpRepository {
     private const val PREFS = "mlbb_geoip"
     private const val KEY_MONTH = "month"
     private const val FILE_NAME = "dbip-city-lite.mmdb"
+    private const val BUNDLED_ASSET = "geoip/dbip-city-ipv4.mmdb"
+    private const val BUNDLED_LABEL = "встроенная база"
     private const val CITY_MAP_URL = "https://download.db-ip.com/free/dbip-city-lite-%s.mmdb.gz"
 
     private val _status = MutableStateFlow<GeoIpStatus>(GeoIpStatus.NotDownloaded)
     val status: StateFlow<GeoIpStatus> = _status.asStateFlow()
 
+    private var appContext: Context? = null
     private var directory: File? = null
     private var databaseFile: File? = null
     private var prefs: SharedPreferences? = null
@@ -49,16 +53,57 @@ object GeoIpRepository {
     @Synchronized
     fun initialize(context: Context) {
         if (directory != null) return
-        val dir = File(context.applicationContext.filesDir, "geoip")
+        val app = context.applicationContext
+        appContext = app
+        val dir = File(app.filesDir, "geoip")
         dir.mkdirs()
         directory = dir
         databaseFile = File(dir, FILE_NAME)
-        prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val month = prefs?.getString(KEY_MONTH, null)
-        _status.value = if (databaseFile?.exists() == true && databaseFile?.length() ?: 0 > 1024) {
-            GeoIpStatus.Ready(month ?: "локальная база")
+        if (databaseFile?.exists() == true && (databaseFile?.length() ?: 0) > 1024) {
+            _status.value = GeoIpStatus.Ready(month ?: "локальная база")
         } else {
-            GeoIpStatus.NotDownloaded
+            _status.value = GeoIpStatus.Preparing
+            Thread({ installBundled() }, "geoip-bundled").apply {
+                isDaemon = true
+                start()
+            }
+        }
+    }
+
+    private fun installBundled() {
+        val context = appContext ?: return
+        val dir = directory ?: return
+        val target = databaseFile ?: return
+        val temp = File(dir, "bundled.mmdb.tmp")
+        try {
+            if (target.exists() && target.length() > 1024) {
+                val month = prefs?.getString(KEY_MONTH, null) ?: BUNDLED_LABEL
+                _status.value = GeoIpStatus.Ready(month)
+                return
+            }
+            context.assets.open(BUNDLED_ASSET).use { input ->
+                temp.outputStream().use { output ->
+                    input.copyTo(output, 64 * 1024)
+                }
+            }
+            Reader(temp).use { }
+            if (target.exists()) target.delete()
+            if (!temp.renameTo(target)) {
+                temp.copyTo(target, overwrite = true)
+                temp.delete()
+            }
+            databaseFile = target
+            synchronized(readerLock) {
+                runCatching { reader?.close() }
+                reader = null
+            }
+            prefs?.edit()?.putString(KEY_MONTH, BUNDLED_LABEL)?.apply()
+            _status.value = GeoIpStatus.Ready(BUNDLED_LABEL)
+        } catch (t: Throwable) {
+            temp.delete()
+            _status.value = GeoIpStatus.Error("встроенная база: ${t.message ?: t.javaClass.simpleName}")
         }
     }
 
@@ -74,7 +119,7 @@ object GeoIpRepository {
                 @Suppress("UNCHECKED_CAST")
                 val record = current.get(inet, Map::class.java) as? Map<*, *> ?: return null
                 val city = cityName(record)
-                val country = ((record["country"] as? Map<*, *>)?.get("iso_code") as? String)
+                val country = countryCode(record)
                 GeoInfo(city, country)
             } catch (_: Exception) {
                 null
@@ -83,7 +128,9 @@ object GeoIpRepository {
     }
 
     suspend fun download(onProgress: (Int, Long) -> Unit = { _, _ -> }): Boolean = withContext(Dispatchers.IO) {
-        if (_status.value is GeoIpStatus.Downloading) return@withContext false
+        if (_status.value is GeoIpStatus.Downloading || _status.value is GeoIpStatus.Preparing) {
+            return@withContext false
+        }
         val dir = directory ?: return@withContext false
         _status.value = GeoIpStatus.Downloading(0, 0)
         val months = recentMonths()
@@ -166,11 +213,18 @@ object GeoIpRepository {
     }
 
     private fun cityName(record: Map<*, *>): String? {
-        val city = record["city"] as? Map<*, *> ?: return null
-        val names = city["names"] as? Map<*, *>
+        val city = record["city"]
+        if (city is String) return translateCity(city)
+        val cityMap = city as? Map<*, *> ?: return null
+        val names = cityMap["names"] as? Map<*, *>
         val ru = names?.get("ru") as? String
         val en = names?.get("en") as? String
         return translateCity(ru ?: en)
+    }
+
+    private fun countryCode(record: Map<*, *>): String? {
+        return ((record["country"] as? Map<*, *>)?.get("iso_code") as? String)
+            ?: record["country_code"] as? String
     }
 
     private fun translateCity(name: String?): String? {

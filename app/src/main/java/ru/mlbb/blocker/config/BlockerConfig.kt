@@ -11,13 +11,14 @@ object BlockerConfig {
 
     fun build(context: Context, port: Int, secret: String): String {
         val store = BlocklistStore(context)
-        val profileRules = RegionProfiles.all
-            .filter { it.id in store.enabledRegions }
-            .flatMap { profile -> profile.rules.map { it.first } }
+        val profile = store.selectedProfile?.let(RegionProfiles::byId)
+        val profileRules = profile?.rules?.map { it.first }.orEmpty()
         val rules = (store.activeValues() + profileRules).distinct()
+        val allowRules = (store.activeAllowValues() + profile?.allowedCidrs.orEmpty()).distinct()
         return SingBoxConfigBuilder.build(
             rules = rules,
-            allowRules = store.activeAllowValues(),
+            allowRules = allowRules,
+            blockMatchPorts = profile?.blockOtherMatchServers == true,
             discoveryMode = store.discoveryMode || System.currentTimeMillis() < store.discoveryUntil,
             clashPort = port,
             clashSecret = secret,

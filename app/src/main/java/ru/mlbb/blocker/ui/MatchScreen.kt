@@ -37,7 +37,7 @@ import java.util.Locale
 fun MatchScreen(
     ui: UiState,
     onStartGame: (String) -> Unit,
-    onRegionToggle: (String, Boolean) -> Unit,
+    onSelectProfile: (String) -> Unit,
     onFastRejectChange: (Boolean) -> Unit,
     onStartDiscovery: () -> Unit,
     onStopDiscovery: () -> Unit,
@@ -60,7 +60,7 @@ fun MatchScreen(
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            "Включите нужные профили и блокировку до поиска матча. Во время матча настройки не меняйте.",
+            "Выберите профиль и включите блокировку до поиска матча. Во время матча настройки не меняйте.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -83,11 +83,9 @@ fun MatchScreen(
                     statusText(ui.status),
                 )
                 CheckRow(
-                    "Профили",
-                    ui.enabledRegions.isNotEmpty(),
-                    if (ui.enabledRegions.isEmpty()) "не выбраны" else RegionProfiles.all
-                        .filter { it.id in ui.enabledRegions }
-                        .joinToString(", ") { it.title },
+                    "Профиль",
+                    ui.selectedProfile != null,
+                    RegionProfiles.byId(ui.selectedProfile ?: "")?.title ?: "не выбран",
                 )
                 CheckRow("Быстрый отказ", ui.fastReject, if (ui.fastReject) "RST/ICMP" else "drop")
                 if (game == null) {
@@ -105,22 +103,13 @@ fun MatchScreen(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text("Профили", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text("Профиль", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 RegionProfiles.all.forEach { profile ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(profile.title, style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                profile.description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = profile.id in ui.enabledRegions,
-                            onCheckedChange = { onRegionToggle(profile.id, it) },
-                        )
-                    }
+                    ProfileCard(
+                        profile = profile,
+                        selected = ui.selectedProfile == profile.id,
+                        onClick = { onSelectProfile(profile.id) },
+                    )
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                 Row(verticalAlignment = Alignment.CenterVertically) {

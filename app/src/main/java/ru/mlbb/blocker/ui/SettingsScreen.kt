@@ -106,6 +106,7 @@ fun SettingsScreen(
             Text(
                 when (geoStatus) {
                     GeoIpStatus.NotDownloaded -> "не загружена"
+                    GeoIpStatus.Preparing -> "подготовка встроенной базы…"
                     is GeoIpStatus.Downloading -> "загрузка… ${geoStatus.progress}% (${geoStatus.received / 1024 / 1024} МБ)"
                     is GeoIpStatus.Ready -> "готова · ${geoStatus.month}"
                     is GeoIpStatus.Error -> "ошибка: ${geoStatus.message}"
@@ -115,15 +116,21 @@ fun SettingsScreen(
                 else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                "Офлайн-определение города по IP. База DB-IP Lite City скачивается один раз (~50–100 МБ), лицензия CC BY 4.0.",
+                "База DB-IP Lite City (IPv4, ~59 МБ) уже встроена в APK и распаковывается при первом запуске. Кнопка обновляет её до свежей версии. Лицензия CC BY 4.0, источник: db-ip.com / sapics/ip-location-db.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(
                 onClick = onDownloadGeoIp,
-                enabled = geoStatus !is GeoIpStatus.Downloading,
+                enabled = geoStatus !is GeoIpStatus.Downloading && geoStatus !is GeoIpStatus.Preparing,
             ) {
-                Text(if (geoStatus is GeoIpStatus.Ready) "Обновить базу" else "Скачать базу")
+                Text(
+                    when (geoStatus) {
+                        is GeoIpStatus.Ready -> "Обновить базу"
+                        GeoIpStatus.Preparing -> "Подготовка…"
+                        else -> "Скачать базу"
+                    },
+                )
             }
         }
 
@@ -275,7 +282,7 @@ private fun copyDiagnostics(context: Context, ui: UiState) {
         appendLine("vpnPermission=${ui.vpnPermissionGranted}")
         appendLine("status=${ui.status}")
         appendLine("rules=${ui.effectiveRuleCount}")
-        appendLine("regions=${ui.enabledRegions.joinToString(",")}")
+        appendLine("profile=${ui.selectedProfile ?: "none"}")
         appendLine("fastReject=${ui.fastReject}")
         ui.mlbbPackages.forEach { info ->
             appendLine(

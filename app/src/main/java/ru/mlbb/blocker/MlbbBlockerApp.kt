@@ -7,7 +7,7 @@ import android.os.Build
 import ru.mlbb.blocker.data.BlocklistStore
 import ru.mlbb.blocker.data.db.MonitorRepository
 import ru.mlbb.blocker.data.geo.GeoIpRepository
-import ru.mlbb.blocker.data.Presets
+import ru.mlbb.blocker.data.RegionProfiles
 
 class MlbbBlockerApp : Application() {
 
@@ -42,8 +42,8 @@ class MlbbBlockerApp : Application() {
         val prefs = getSharedPreferences("mlbb_blocker", MODE_PRIVATE)
         if (prefs.getBoolean("first_run_seeded", false)) return
         val store = BlocklistStore(this)
-        if (store.loadRules().isEmpty()) {
-            store.addRulesDetailed(Presets.MOSCOW.rules)
+        if (store.loadRules().isEmpty() && store.selectedProfile == null) {
+            store.selectProfile(RegionProfiles.ID_FAR_EAST)
             store.discoveryMode = false
         }
         prefs.edit().putBoolean("first_run_seeded", true).apply()

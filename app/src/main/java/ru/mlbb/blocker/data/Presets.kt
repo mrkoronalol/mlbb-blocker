@@ -13,7 +13,7 @@ object Presets {
         id = "moscow",
         title = "Москва",
         description = "Матч-сервер 154.85.91.0/24 и два московских адреса из вашего PCAP.",
-        rules = RegionProfiles.MOSCOW.rules,
+        rules = RegionProfiles.MOSCOW_SERVERS,
     )
 
     val NON_FAR_EAST = BlockPreset(

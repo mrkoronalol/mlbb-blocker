@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
                     ui = ui.value,
                     onToggle = ::toggleBlocker,
                     onDiscoveryChange = viewModel::toggleDiscovery,
-                    onRegionToggle = viewModel::setRegionEnabled,
+                    onSelectProfile = viewModel::selectProfile,
                     onAddRule = viewModel::addRule,
                     onAddRules = viewModel::addRules,
                     onAddPreset = viewModel::addPreset,

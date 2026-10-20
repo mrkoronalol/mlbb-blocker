@@ -1,0 +1,15 @@
+GeoIP database
+==============
+
+File: dbip-city-ipv4.mmdb
+Source: https://github.com/sapics/ip-location-db/releases/tag/latest
+Upstream: DB-IP Lite City (https://db-ip.com)
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License text: https://creativecommons.org/licenses/by/4.0/
+
+The database is bundled with the application so that offline city lookup works
+immediately after installation. IPv4 only. It can be updated from the app's
+Settings screen.
+
+Downloaded: 2026-10-21
+SHA256: 187CF7B9A928C555B483CB40A9B9FD2975B9F5A4003748064F40D8C451D17A21

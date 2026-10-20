@@ -102,4 +102,51 @@ class SingBoxConfigBuilderTest {
             assertFalse(rules.getJSONObject(index).optString("outbound") == "sink")
         }
     }
+
+    @Test
+    fun allowOnlyProfileBlocksOtherMatchPortsAfterAllowRule() {
+        val config = JSONObject(
+            SingBoxConfigBuilder.build(
+                rules = listOf("146.185.199.0/24"),
+                allowRules = listOf("154.85.91.0/24"),
+                blockMatchPorts = true,
+                discoveryMode = false,
+                clashPort = 39090,
+                clashSecret = "test-secret",
+            ),
+        )
+        val rules = config.getJSONObject("route").getJSONArray("rules")
+        var allowIndex = -1
+        var portBlockIndex = -1
+        var rangeBlockIndex = -1
+        for (index in 0 until rules.length()) {
+            val rule = rules.getJSONObject(index)
+            if (rule.optString("outbound") == "direct" && rule.has("ip_cidr")) allowIndex = index
+            if (rule.optString("outbound") == "sink" && rule.has("port")) portBlockIndex = index
+            if (rule.optString("outbound") == "sink" && rule.has("port_range")) rangeBlockIndex = index
+        }
+        assertTrue(allowIndex >= 0)
+        assertTrue(portBlockIndex > allowIndex)
+        assertTrue(rangeBlockIndex > allowIndex)
+        assertEquals(10003, rules.getJSONObject(portBlockIndex).getJSONArray("port").getInt(0))
+        assertEquals("5000:5054", rules.getJSONObject(rangeBlockIndex).getJSONArray("port_range").getString(0))
+    }
+
+    @Test
+    fun discoveryModeOmitsMatchPortBlock() {
+        val config = JSONObject(
+            SingBoxConfigBuilder.build(
+                rules = emptyList(),
+                allowRules = listOf("154.85.91.0/24"),
+                blockMatchPorts = true,
+                discoveryMode = true,
+                clashPort = 39090,
+                clashSecret = "test-secret",
+            ),
+        )
+        val rules = config.getJSONObject("route").getJSONArray("rules")
+        for (index in 0 until rules.length()) {
+            assertFalse(rules.getJSONObject(index).optString("outbound") == "sink")
+        }
+    }
 }

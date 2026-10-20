@@ -12,6 +12,7 @@ object SingBoxConfigBuilder {
     fun build(
         rules: List<String>,
         allowRules: List<String> = emptyList(),
+        blockMatchPorts: Boolean = false,
         discoveryMode: Boolean,
         clashPort: Int,
         clashSecret: String,
@@ -92,6 +93,20 @@ object SingBoxConfigBuilder {
             routeRules.put(
                 JSONObject()
                     .put("ip_cidr", JSONArray(rules))
+                    .put("action", "route")
+                    .put("outbound", "sink"),
+            )
+        }
+        if (!discoveryMode && blockMatchPorts) {
+            routeRules.put(
+                JSONObject()
+                    .put("port", JSONArray().put(10003))
+                    .put("action", "route")
+                    .put("outbound", "sink"),
+            )
+            routeRules.put(
+                JSONObject()
+                    .put("port_range", JSONArray().put("5000:5054"))
                     .put("action", "route")
                     .put("outbound", "sink"),
             )

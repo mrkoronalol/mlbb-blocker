@@ -15,15 +15,24 @@ class RegionProfilesTest {
             for ((value, _) in profile.rules) {
                 assertEquals(value, Cidr.normalize(value))
             }
+            for (value in profile.allowedCidrs) {
+                assertEquals(value, Cidr.normalize(value))
+            }
         }
     }
 
     @Test
-    fun moscowProfileCoversAllObservedMoscowProbes() {
-        val values = RegionProfiles.MOSCOW.rules.map { it.first }.toSet()
-        assertTrue("154.85.91.0/24" in values)
-        assertTrue("66.253.15.0/24" in values)
-        assertTrue("81.177.97.0/24" in values)
+    fun moscowProfileAllowsMoscowAndBlocksEverythingElse() {
+        val allowed = RegionProfiles.MOSCOW.allowedCidrs.toSet()
+        assertEquals(
+            setOf("154.85.91.0/24", "66.253.15.0/24", "81.177.97.0/24"),
+            allowed,
+        )
+        val blocked = RegionProfiles.MOSCOW.rules.map { it.first }.toSet()
+        assertTrue(blocked.none { it in allowed })
+        assertTrue("146.185.199.0/24" in blocked)
+        assertTrue("92.223.80.0/24" in blocked)
+        assertTrue(RegionProfiles.MOSCOW.blockOtherMatchServers)
     }
 
     @Test
@@ -36,10 +45,15 @@ class RegionProfilesTest {
         assertTrue("148.153.35.0/24" in values)
         assertTrue("148.153.50.0/24" in values)
         assertFalse(values.any { it.startsWith("92.223.80.") })
+        assertFalse(RegionProfiles.FAR_EAST.blockOtherMatchServers)
     }
 
     @Test
-    fun novosibirskProfileIsSeparate() {
-        assertEquals(listOf("146.185.199.0/24"), RegionProfiles.NOVOSIBIRSK.rules.map { it.first })
+    fun novosibirskProfileAllowsOnlyNovosibirsk() {
+        assertEquals(listOf("146.185.199.0/24"), RegionProfiles.NOVOSIBIRSK.allowedCidrs)
+        val blocked = RegionProfiles.NOVOSIBIRSK.rules.map { it.first }.toSet()
+        assertFalse("146.185.199.0/24" in blocked)
+        assertTrue("154.85.91.0/24" in blocked)
+        assertTrue(RegionProfiles.NOVOSIBIRSK.blockOtherMatchServers)
     }
 }

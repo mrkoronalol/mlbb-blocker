@@ -49,8 +49,39 @@ class BlocklistStore(context: Context) {
             prefs.edit().putStringSet(KEY_REGIONS, value).apply()
         }
 
+    var selectedProfile: String?
+        get() {
+            prefs.getString(KEY_SELECTED_PROFILE, null)?.let { saved ->
+                return saved.takeIf { RegionProfiles.byId(it) != null }
+            }
+            val legacy = enabledRegions
+            val migrated = listOf(
+                RegionProfiles.ID_FAR_EAST,
+                RegionProfiles.ID_MOSCOW,
+                RegionProfiles.ID_NOVOSIBIRSK,
+            ).firstOrNull { it in legacy } ?: return null
+            prefs.edit().putString(KEY_SELECTED_PROFILE, migrated).apply()
+            return migrated
+        }
+        set(value) {
+            val valid = value?.takeIf { RegionProfiles.byId(it) != null }
+            prefs.edit()
+                .putString(KEY_SELECTED_PROFILE, valid)
+                .putStringSet(KEY_REGIONS, valid?.let { setOf(it) } ?: emptySet())
+                .apply()
+        }
+
+    fun selectProfile(profileId: String) {
+        if (RegionProfiles.byId(profileId) == null) return
+        selectedProfile = profileId
+    }
+
     fun setRegionEnabled(profileId: String, enabled: Boolean) {
-        enabledRegions = if (enabled) enabledRegions + profileId else enabledRegions - profileId
+        if (enabled) {
+            selectProfile(profileId)
+        } else if (selectedProfile == profileId) {
+            selectedProfile = null
+        }
     }
 
     fun loadAllowRules(): List<AllowRule> {
@@ -179,6 +210,7 @@ class BlocklistStore(context: Context) {
         private const val KEY_LOG_BLOCKED = "log_blocked_attempts"
         private const val KEY_ALLOW_RULES = "allow_rules"
         private const val KEY_REGIONS = "enabled_regions"
+        private const val KEY_SELECTED_PROFILE = "selected_profile"
         private const val KEY_STABILIZATION_LEGACY = "ping_stabilization"
     }
 }
