@@ -50,7 +50,7 @@ class SingBoxConfigBuilderTest {
         val tun = config.getJSONArray("inbounds").getJSONObject(0)
         assertEquals("tun", tun.getString("type"))
         val packages = tun.getJSONArray("include_package")
-        assertEquals(SingBoxConfigBuilder.MLBB_PACKAGES.size, packages.length())
+        assertTrue(packages.length() >= SingBoxConfigBuilder.MLBB_PACKAGES.size)
         assertEquals(SingBoxConfigBuilder.MLBB_PACKAGE, packages.getString(0))
         assertEquals(SingBoxConfigBuilder.MLBB_PACKAGE_XIAOMI, packages.getString(1))
 

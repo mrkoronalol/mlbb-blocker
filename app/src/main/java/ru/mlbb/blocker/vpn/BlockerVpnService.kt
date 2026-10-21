@@ -27,6 +27,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ru.mlbb.blocker.BuildConfig
 import ru.mlbb.blocker.MainActivity
 import ru.mlbb.blocker.MlbbBlockerApp
 import ru.mlbb.blocker.R
@@ -126,7 +127,7 @@ class BlockerVpnService : VpnService() {
 
         startJob = scope.launch {
             try {
-                if (!BlockerController.isMlbbInstalled(this@BlockerVpnService)) {
+                if (!BuildConfig.DEBUG && !BlockerController.isMlbbInstalled(this@BlockerVpnService)) {
                     throw IllegalStateException(getString(R.string.error_mlbb_missing))
                 }
                 if (stopping.get()) return@launch
@@ -425,8 +426,11 @@ class BlockerVpnService : VpnService() {
         }
         SingBoxConfigBuilder.MLBB_PACKAGES.forEach(::addAllowed)
 
-        if (addedMlbb == 0) {
+        if (addedMlbb == 0 && !BuildConfig.DEBUG) {
             throw IllegalStateException(getString(R.string.error_mlbb_missing))
+        }
+        if (BuildConfig.DEBUG) {
+            runCatching { builder.addAllowedApplication("com.android.shell") }
         }
 
         val exclude = options.excludePackage

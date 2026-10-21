@@ -2,12 +2,15 @@ package ru.mlbb.blocker.config
 
 import org.json.JSONArray
 import org.json.JSONObject
+import ru.mlbb.blocker.BuildConfig
+import ru.mlbb.blocker.data.GamePorts
 
 object SingBoxConfigBuilder {
 
     const val MLBB_PACKAGE = "com.mobile.legends"
     const val MLBB_PACKAGE_XIAOMI = "com.mobilelegends.mi"
     val MLBB_PACKAGES = listOf(MLBB_PACKAGE, MLBB_PACKAGE_XIAOMI)
+    const val TEST_PACKAGE = "com.android.shell"
 
     fun build(
         rules: List<String>,
@@ -22,6 +25,7 @@ object SingBoxConfigBuilder {
         logOutput: String? = null,
         logLevel: String = "info",
     ): String {
+        val includedPackages = MLBB_PACKAGES + if (BuildConfig.DEBUG) listOf(TEST_PACKAGE) else emptyList()
         val root = JSONObject()
 
         val log = JSONObject()
@@ -54,7 +58,7 @@ object SingBoxConfigBuilder {
             .put("auto_route", true)
             .put("strict_route", false)
             .put("stack", "gvisor")
-            .put("include_package", JSONArray().also { array -> MLBB_PACKAGES.forEach(array::put) })
+            .put("include_package", JSONArray().also { array -> includedPackages.forEach(array::put) })
 
         root.put("inbounds", JSONArray().put(tun))
         root.put(
@@ -92,14 +96,7 @@ object SingBoxConfigBuilder {
         }
         routeRules.put(
             JSONObject()
-                .put(
-                    "port",
-                    JSONArray()
-                        .put(30190)
-                        .put(30021)
-                        .put(30071)
-                        .put(30220),
-                )
+                .put("port", JSONArray(GamePorts.SAFE_PORT_LIST))
                 .put("action", "route")
                 .put("outbound", "direct"),
         )
@@ -115,14 +112,14 @@ object SingBoxConfigBuilder {
             routeRules.put(
                 JSONObject()
                     .put("ip_cidr", JSONArray(profileRules))
-                    .put("port", JSONArray().put(10003))
+                    .put("port", JSONArray().put(GamePorts.MATCH_PORT))
                     .put("action", "route")
                     .put("outbound", "sink"),
             )
             routeRules.put(
                 JSONObject()
                     .put("ip_cidr", JSONArray(profileRules))
-                    .put("port_range", JSONArray().put("5000:5054"))
+                    .put("port_range", JSONArray().put(GamePorts.MATCH_PORT_RANGE))
                     .put("action", "route")
                     .put("outbound", "sink"),
             )
@@ -130,13 +127,13 @@ object SingBoxConfigBuilder {
         if (!discoveryMode && blockMatchPorts) {
             routeRules.put(
                 JSONObject()
-                    .put("port", JSONArray().put(10003))
+                    .put("port", JSONArray().put(GamePorts.MATCH_PORT))
                     .put("action", "route")
                     .put("outbound", "sink"),
             )
             routeRules.put(
                 JSONObject()
-                    .put("port_range", JSONArray().put("5000:5054"))
+                    .put("port_range", JSONArray().put(GamePorts.MATCH_PORT_RANGE))
                     .put("action", "route")
                     .put("outbound", "sink"),
             )

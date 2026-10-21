@@ -100,4 +100,48 @@ object Cidr {
         if (isIpv4(ip) || !ip.contains(':')) return null
         return withPrefix(ip, 64)
     }
+
+    fun contains(cidr: String, ip: String): Boolean {
+        val normalized = normalize(cidr) ?: return false
+        val addressPart = ip.substringBefore('/').substringBefore('%')
+        if (addressPart.isBlank()) return false
+        val network = normalized.substringBefore('/')
+        val prefix = normalized.substringAfter('/').toIntOrNull() ?: return false
+
+        if (isIpv4(network) && isIpv4(addressPart)) {
+            val networkValue = ipv4ToLong(network) ?: return false
+            val addressValue = ipv4ToLong(addressPart) ?: return false
+            val mask = if (prefix == 0) 0L else (0xFFFFFFFFL shl (32 - prefix)) and 0xFFFFFFFFL
+            return (networkValue and mask) == (addressValue and mask)
+        }
+
+        if (network.contains(':') && addressPart.contains(':')) {
+            val networkAddress = try {
+                InetAddress.getByName(network)
+            } catch (_: Exception) {
+                return false
+            }
+            val address = try {
+                InetAddress.getByName(addressPart)
+            } catch (_: Exception) {
+                return false
+            }
+            val networkBytes = networkAddress.address
+            val addressBytes = address.address
+            if (networkBytes.size != addressBytes.size) return false
+            var remaining = prefix
+            for (index in networkBytes.indices) {
+                if (remaining <= 0) break
+                val bits = minOf(8, remaining)
+                val mask = (0xFF shl (8 - bits)) and 0xFF
+                if ((networkBytes[index].toInt() and mask) != (addressBytes[index].toInt() and mask)) {
+                    return false
+                }
+                remaining -= bits
+            }
+            return true
+        }
+
+        return false
+    }
 }

@@ -44,4 +44,19 @@ class CidrTest {
         assertEquals("92.223.80.0/24", Cidr.subnet24("92.223.80.65"))
         assertNull(Cidr.subnet24("::1"))
     }
+
+    @Test
+    fun checksIpv4Containment() {
+        assertTrue(Cidr.contains("154.85.91.0/24", "154.85.91.151"))
+        assertTrue(Cidr.contains("154.85.91.0/24", "154.85.91.0"))
+        assertFalse(Cidr.contains("154.85.91.0/24", "154.85.92.1"))
+        assertTrue(Cidr.contains("0.0.0.0/0", "8.8.8.8"))
+    }
+
+    @Test
+    fun checksIpv6Containment() {
+        assertTrue(Cidr.contains("2001:db8::/32", "2001:db8::1"))
+        assertFalse(Cidr.contains("2001:db8::/32", "2001:db9::1"))
+        assertTrue(Cidr.contains("::/0", "2a00:1450:4001::1"))
+    }
 }
