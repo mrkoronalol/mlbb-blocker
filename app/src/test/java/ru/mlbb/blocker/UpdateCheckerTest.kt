@@ -36,7 +36,9 @@ class UpdateCheckerTest {
                 },
                 {
                   "name": "MLBB-Blocker-0.11.0-arm64.apk",
-                  "browser_download_url": "https://example.com/arm64.apk"
+                  "browser_download_url": "https://example.com/arm64.apk",
+                  "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                  "size": 123456
                 }
               ]
             }
@@ -48,6 +50,11 @@ class UpdateCheckerTest {
         assertEquals("0.11.0", info!!.version)
         assertEquals("https://example.com/arm64.apk", info.downloadUrl)
         assertEquals("https://github.com/mrkoronalol/mlbb-blocker/releases/tag/v0.11.0", info.releaseUrl)
+        assertEquals(
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            info.sha256,
+        )
+        assertEquals(123456L, info.size)
         assertNull(UpdateChecker.parseRelease(json, "0.11.0"))
     }
 }

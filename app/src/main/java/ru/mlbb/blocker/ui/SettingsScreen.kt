@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -47,6 +48,10 @@ fun SettingsScreen(
     onShowMatchDemo: () -> Unit,
     onRefreshDiagnostics: () -> Unit,
     onDownloadGeoIp: () -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
+    onApplyImport: (Boolean) -> Unit,
+    onCancelImport: () -> Unit,
     onClearLogs: () -> Unit,
 ) {
     Column(
@@ -213,6 +218,77 @@ fun SettingsScreen(
                     },
                 )
             }
+        }
+
+        SettingsCard {
+            Text(
+                "Резервная копия",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                "Профиль, блоклист, исключения, настройки, история IP, матчей и пинга. Файл JSON можно сохранить в Downloads или облако.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onExportBackup,
+                    enabled = !ui.backupBusy,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Экспорт")
+                }
+                OutlinedButton(
+                    onClick = onImportBackup,
+                    enabled = !ui.backupBusy,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Импорт")
+                }
+            }
+            if (ui.backupBusy) {
+                Text(
+                    "Работа с файлом…",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        ui.pendingImport?.let { summary ->
+            AlertDialog(
+                onDismissRequest = onCancelImport,
+                title = { Text("Восстановить данные?") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "Версия: ${summary.appVersion.ifBlank { "неизвестна" }}",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            "Правила: ${summary.rules} · исключения: ${summary.allowRules}\n" +
+                                "IP: ${summary.endpoints} · блокировки: ${summary.blockedAttempts}\n" +
+                                "Матчи: ${summary.matchSessions} · пинг: ${summary.pingSamples}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        TextButton(onClick = { onApplyImport(true) }) {
+                            Text("Объединить с текущими")
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { onApplyImport(false) }) {
+                        Text("Заменить", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onCancelImport) {
+                        Text("Отмена")
+                    }
+                },
+            )
         }
 
         SettingsCard {

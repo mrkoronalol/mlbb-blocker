@@ -12,6 +12,18 @@ interface MonitorDao {
     @Query("SELECT * FROM endpoints ORDER BY lastSeen DESC LIMIT :limit")
     fun observeEndpoints(limit: Int = 1000): Flow<List<EndpointEntity>>
 
+    @Query("SELECT * FROM endpoints")
+    suspend fun allEndpoints(): List<EndpointEntity>
+
+    @Query("SELECT * FROM blocked_attempts")
+    suspend fun allBlockedAttempts(): List<BlockedAttemptEntity>
+
+    @Query("SELECT * FROM match_sessions")
+    suspend fun allMatchSessions(): List<MatchSessionEntity>
+
+    @Query("SELECT * FROM ping_samples")
+    suspend fun allPingSamples(): List<PingSampleEntity>
+
     @Query("SELECT * FROM endpoints WHERE network = :network AND ip = :ip AND port = :port LIMIT 1")
     suspend fun findEndpoint(network: String, ip: String, port: Int): EndpointEntity?
 
@@ -43,6 +55,18 @@ interface MonitorDao {
 
     @Insert
     suspend fun insertBlockedAttempt(attempt: BlockedAttemptEntity): Long
+
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun insertEndpoints(endpoints: List<EndpointEntity>)
+
+    @Insert
+    suspend fun insertBlockedAttempts(attempts: List<BlockedAttemptEntity>)
+
+    @Insert
+    suspend fun insertMatchSessions(sessions: List<MatchSessionEntity>)
+
+    @Insert
+    suspend fun insertPingSamples(samples: List<PingSampleEntity>)
 
     @Query("SELECT * FROM endpoints WHERE geoAt = 0 LIMIT :limit")
     suspend fun endpointsWithoutGeo(limit: Int = 500): List<EndpointEntity>

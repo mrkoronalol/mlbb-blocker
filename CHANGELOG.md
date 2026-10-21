@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.0
+
+- JSON backup/export/import for settings, profiles, rules, allowlist and history.
+- Automatic local backup before downloading an update.
+- In-app APK download with SHA256 and signature verification.
+- PackageInstaller update flow with unknown-sources handling.
+- Backup/update cards in Settings.
+
 ## 0.12.0
 
 - Signed release APK and automated GitHub Actions release pipeline.

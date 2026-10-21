@@ -46,6 +46,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val exportBackupLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        uri?.let(viewModel::exportBackup)
+    }
+
+    private val importBackupLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri?.let(viewModel::prepareImport)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val nightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
@@ -81,6 +93,18 @@ class MainActivity : ComponentActivity() {
                     onShowMatchDemo = viewModel::showMatchDemo,
                     onRefreshDiagnostics = viewModel::refreshMlbbInstalled,
                     onDownloadGeoIp = viewModel::downloadGeoIp,
+                    onExportBackup = {
+                        exportBackupLauncher.launch(
+                            "mlbb-blocker-backup-${System.currentTimeMillis()}.json",
+                        )
+                    },
+                    onImportBackup = {
+                        importBackupLauncher.launch(arrayOf("application/json", "text/plain"))
+                    },
+                    onApplyImport = viewModel::applyImport,
+                    onCancelImport = viewModel::cancelImport,
+                    onDownloadUpdate = viewModel::downloadUpdate,
+                    onInstallUpdate = viewModel::installUpdate,
                     onStartGame = ::startMatch,
                     onMatchResult = viewModel::finishMatch,
                     onStartDiscovery = { viewModel.startDiscovery(60) },

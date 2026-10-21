@@ -3,6 +3,7 @@ package ru.mlbb.blocker
 import android.app.Application
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.net.VpnService
 import android.provider.Settings
 import androidx.lifecycle.AndroidViewModel
@@ -30,6 +31,7 @@ import ru.mlbb.blocker.data.AllowRule
 import ru.mlbb.blocker.data.Cidr
 import ru.mlbb.blocker.data.ConnectionStat
 import ru.mlbb.blocker.data.GamePorts
+import ru.mlbb.blocker.data.InstallResult
 import ru.mlbb.blocker.data.MlbbPackageInfo
 import ru.mlbb.blocker.data.db.BlockedAttemptEntity
 import ru.mlbb.blocker.data.db.MatchSessionEntity
@@ -41,7 +43,13 @@ import ru.mlbb.blocker.data.Presets
 import ru.mlbb.blocker.data.RegionProfiles
 import ru.mlbb.blocker.data.UpdateChecker
 import ru.mlbb.blocker.data.UpdateInfo
+import ru.mlbb.blocker.data.UpdateDownloadState
+import ru.mlbb.blocker.data.UpdateInstaller
 import ru.mlbb.blocker.data.UpdateNotifier
+import ru.mlbb.blocker.data.backup.BackupCodec
+import ru.mlbb.blocker.data.backup.BackupData
+import ru.mlbb.blocker.data.backup.BackupRepository
+import ru.mlbb.blocker.data.backup.BackupSummary
 import ru.mlbb.blocker.vpn.BlockerController
 import ru.mlbb.blocker.vpn.MatchAlertManager
 
@@ -76,6 +84,10 @@ data class UiState(
     val overlayPermissionGranted: Boolean = false,
     val updateInfo: UpdateInfo? = null,
     val updateChecking: Boolean = false,
+    val updateDownload: UpdateDownloadState = UpdateDownloadState.Idle,
+    val updateInstalling: Boolean = false,
+    val pendingImport: BackupSummary? = null,
+    val backupBusy: Boolean = false,
 ) {
     val isBusy: Boolean get() = status is BlockerStatus.Starting
     val isRunning: Boolean get() = status is BlockerStatus.Running
@@ -85,6 +97,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val store = BlocklistStore(application)
     private var demoMatchAlert: MatchAlertManager? = null
+    private var pendingBackupData: BackupData? = null
     private val _ui = MutableStateFlow(
         UiState(
             rules = store.loadRules(),
@@ -169,6 +182,112 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 UpdateNotifier.notifyIfNeeded(getApplication(), info)
             }
         }
+    }
+
+    fun downloadUpdate() {
+        val info = _ui.value.updateInfo ?: return
+        if (_ui.value.updateDownload is UpdateDownloadState.Downloading) return
+        _ui.update {
+            it.copy(updateDownload = UpdateDownloadState.Downloading(0, 0, info.size ?: 0))
+        }
+        viewModelScope.launch {
+            try {
+                BackupRepository.writeAutoBackup(getApplication())
+                val file = UpdateInstaller.download(getApplication(), info) { progress, received, total ->
+                    _ui.update {
+                        it.copy(
+                            updateDownload = UpdateDownloadState.Downloading(
+                                progress,
+                                received,
+                                total,
+                            ),
+                        )
+                    }
+                }
+                _ui.update { it.copy(updateDownload = UpdateDownloadState.Ready(file)) }
+                showMessage("APK загружен и проверен")
+            } catch (t: Throwable) {
+                _ui.update {
+                    it.copy(
+                        updateDownload = UpdateDownloadState.Error(
+                            t.message ?: t.javaClass.simpleName,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    fun installUpdate() {
+        val ready = _ui.value.updateDownload as? UpdateDownloadState.Ready ?: return
+        if (_ui.value.updateInstalling) return
+        _ui.update { it.copy(updateInstalling = true) }
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                UpdateInstaller.install(getApplication(), ready.file)
+            }
+            _ui.update { it.copy(updateInstalling = false) }
+            when (result) {
+                InstallResult.Started -> showMessage("Открыт системный установщик")
+                InstallResult.NeedPermission ->
+                    showMessage("Разрешите установку из этого источника и нажмите снова")
+                InstallResult.SignatureMismatch ->
+                    showMessage("Подпись APK не совпадает. Сохраните копию и переустановите вручную")
+                is InstallResult.Error -> showMessage("Ошибка установки: ${result.message}")
+            }
+        }
+    }
+
+    fun exportBackup(uri: Uri) {
+        _ui.update { it.copy(backupBusy = true) }
+        viewModelScope.launch {
+            try {
+                val summary = BackupRepository.export(getApplication(), uri)
+                showMessage("Резервная копия сохранена: ${summary.rules} правил, ${summary.endpoints} IP")
+            } catch (t: Throwable) {
+                showMessage("Не удалось сохранить копию: ${t.message ?: "ошибка"}")
+            } finally {
+                _ui.update { it.copy(backupBusy = false) }
+            }
+        }
+    }
+
+    fun prepareImport(uri: Uri) {
+        _ui.update { it.copy(backupBusy = true) }
+        viewModelScope.launch {
+            try {
+                val data = BackupRepository.read(getApplication(), uri)
+                pendingBackupData = data
+                _ui.update { it.copy(pendingImport = BackupCodec.summary(data)) }
+            } catch (t: Throwable) {
+                showMessage("Не удалось прочитать копию: ${t.message ?: "ошибка"}")
+            } finally {
+                _ui.update { it.copy(backupBusy = false) }
+            }
+        }
+    }
+
+    fun applyImport(merge: Boolean) {
+        val data = pendingBackupData ?: return
+        _ui.update { it.copy(backupBusy = true) }
+        viewModelScope.launch {
+            try {
+                BackupRepository.apply(getApplication(), data, merge)
+                pendingBackupData = null
+                _ui.update { it.copy(pendingImport = null) }
+                refreshRules()
+                showMessage(if (merge) "Данные объединены" else "Данные восстановлены")
+            } catch (t: Throwable) {
+                showMessage("Не удалось восстановить копию: ${t.message ?: "ошибка"}")
+            } finally {
+                _ui.update { it.copy(backupBusy = false) }
+            }
+        }
+    }
+
+    fun cancelImport() {
+        pendingBackupData = null
+        _ui.update { it.copy(pendingImport = null) }
     }
 
     fun startVpn() {
@@ -507,6 +626,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 discoveryUntil = store.discoveryUntil,
                 discoveryActive = store.discoveryMode || store.discoveryUntil > System.currentTimeMillis(),
                 allowRules = store.loadAllowRules(),
+                matchAlerts = store.matchAlerts,
+                hideStartupAlerts = store.hideStartupAlerts,
+                autoStart = store.autoStart,
+                showOnboarding = !store.onboardingDone,
             )
         }
     }

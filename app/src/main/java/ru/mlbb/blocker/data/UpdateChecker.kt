@@ -13,6 +13,8 @@ data class UpdateInfo(
     val releaseUrl: String,
     val downloadUrl: String,
     val notes: String,
+    val sha256: String? = null,
+    val size: Long? = null,
 )
 
 object UpdateChecker {
@@ -49,25 +51,26 @@ object UpdateChecker {
         val releaseUrl = json.optString("html_url")
         if (releaseUrl.isBlank()) return null
 
-        var downloadUrl = releaseUrl
+        var selected: JSONObject? = null
+        var fallback: JSONObject? = null
         val assets = json.optJSONArray("assets")
         if (assets != null) {
-            var fallback: String? = null
             for (index in 0 until assets.length()) {
                 val asset = assets.optJSONObject(index) ?: continue
                 val name = asset.optString("name")
                 val url = asset.optString("browser_download_url")
                 if (!name.endsWith(".apk", ignoreCase = true) || url.isBlank()) continue
                 if (name.contains("arm64", ignoreCase = true)) {
-                    downloadUrl = url
+                    selected = asset
                     break
                 }
-                if (fallback == null) fallback = url
+                if (fallback == null) fallback = asset
             }
-            if (downloadUrl == releaseUrl && fallback != null) {
-                downloadUrl = fallback
-            }
+            if (selected == null) selected = fallback
         }
+        val downloadUrl = selected?.optString("browser_download_url")
+            ?.takeIf { it.isNotBlank() }
+            ?: releaseUrl
 
         return UpdateInfo(
             version = version,
@@ -76,6 +79,10 @@ object UpdateChecker {
             releaseUrl = releaseUrl,
             downloadUrl = downloadUrl,
             notes = json.optString("body"),
+            sha256 = selected?.optString("digest")
+                ?.removePrefix("sha256:")
+                ?.takeIf { it.length == 64 },
+            size = selected?.optLong("size", 0L)?.takeIf { it > 0 },
         )
     }
 

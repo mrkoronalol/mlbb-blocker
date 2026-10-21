@@ -75,6 +75,7 @@ import ru.mlbb.blocker.data.BlockerStatus
 import ru.mlbb.blocker.data.ConnectionStat
 import ru.mlbb.blocker.data.RegionProfile
 import ru.mlbb.blocker.data.RegionProfiles
+import ru.mlbb.blocker.data.UpdateDownloadState
 import ru.mlbb.blocker.data.UpdateInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -103,6 +104,12 @@ fun BlockerApp(
     onShowMatchDemo: () -> Unit,
     onRefreshDiagnostics: () -> Unit,
     onDownloadGeoIp: () -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
+    onApplyImport: (Boolean) -> Unit,
+    onCancelImport: () -> Unit,
+    onDownloadUpdate: () -> Unit,
+    onInstallUpdate: () -> Unit,
     onStartGame: (String) -> Unit,
     onMatchResult: (String) -> Unit,
     onStartDiscovery: () -> Unit,
@@ -191,6 +198,8 @@ fun BlockerApp(
                         onDiscoveryChange = onDiscoveryChange,
                         onSelectProfile = onSelectProfile,
                         onFinishOnboarding = onFinishOnboarding,
+                        onDownloadUpdate = onDownloadUpdate,
+                        onInstallUpdate = onInstallUpdate,
                         onOpenAbout = { showAbout = true },
                     )
                     1 -> MatchScreen(
@@ -234,6 +243,10 @@ fun BlockerApp(
                         onShowMatchDemo = onShowMatchDemo,
                         onRefreshDiagnostics = onRefreshDiagnostics,
                         onDownloadGeoIp = onDownloadGeoIp,
+                        onExportBackup = onExportBackup,
+                        onImportBackup = onImportBackup,
+                        onApplyImport = onApplyImport,
+                        onCancelImport = onCancelImport,
                         onClearLogs = onClearLogs,
                     )
                 }
@@ -265,6 +278,8 @@ private fun HomeScreen(
     onDiscoveryChange: (Boolean) -> Unit,
     onSelectProfile: (String) -> Unit,
     onFinishOnboarding: () -> Unit,
+    onDownloadUpdate: () -> Unit,
+    onInstallUpdate: () -> Unit,
     onOpenAbout: () -> Unit,
 ) {
     Column(
@@ -305,7 +320,13 @@ private fun HomeScreen(
         }
 
         ui.updateInfo?.let { update ->
-            UpdateBanner(update = update)
+            UpdateBanner(
+                update = update,
+                download = ui.updateDownload,
+                installing = ui.updateInstalling,
+                onDownload = onDownloadUpdate,
+                onInstall = onInstallUpdate,
+            )
         }
 
         if (ui.showOnboarding) {
@@ -529,7 +550,13 @@ private fun OnboardingCard(onDone: () -> Unit) {
 }
 
 @Composable
-private fun UpdateBanner(update: UpdateInfo) {
+private fun UpdateBanner(
+    update: UpdateInfo,
+    download: UpdateDownloadState,
+    installing: Boolean,
+    onDownload: () -> Unit,
+    onInstall: () -> Unit,
+) {
     val context = LocalContext.current
     Card(
         colors = CardDefaults.cardColors(
@@ -564,15 +591,55 @@ private fun UpdateBanner(update: UpdateInfo) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    update.size?.let { bytes ->
+                        Text(
+                            "Размер APK: ${bytes / 1024 / 1024} МБ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { openUrl(context, update.downloadUrl) }) {
-                    Text(stringResource(R.string.update_download))
+
+            when (download) {
+                UpdateDownloadState.Idle -> {
+                    Button(onClick = onDownload) {
+                        Text("Скачать и установить")
+                    }
                 }
-                TextButton(onClick = { openUrl(context, update.releaseUrl) }) {
-                    Text(stringResource(R.string.update_release_page))
+
+                is UpdateDownloadState.Downloading -> {
+                    Text(
+                        "Загрузка: ${download.progress}% · ${download.received / 1024 / 1024} МБ",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
+
+                is UpdateDownloadState.Ready -> {
+                    Button(onClick = onInstall, enabled = !installing) {
+                        Text(if (installing) "Открываем установщик…" else "Установить")
+                    }
+                    Text(
+                        "APK проверен по SHA256 и подписи",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+
+                is UpdateDownloadState.Error -> {
+                    Text(
+                        "Не удалось скачать: ${download.message}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Button(onClick = onDownload) {
+                        Text("Повторить")
+                    }
+                }
+            }
+
+            TextButton(onClick = { openUrl(context, update.releaseUrl) }) {
+                Text(stringResource(R.string.update_release_page))
             }
         }
     }
