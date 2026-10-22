@@ -156,7 +156,7 @@ fun SettingsScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Скрывать стартовые подключения", style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "Не показывать карточку, если подключение закрылось за 2,5 секунды.",
+                        "Не показывать карточку для разрешённых подключений, если они закрылись за 2,5 секунды. Заблокированные серверы показываются всегда.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

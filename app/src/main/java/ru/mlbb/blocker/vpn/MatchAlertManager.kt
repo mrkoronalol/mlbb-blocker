@@ -79,7 +79,9 @@ class MatchAlertManager(
         val key = "$ip:$port"
 
         scope.launch(Dispatchers.IO) {
-            if (store.hideStartupAlerts && clashPort > 0) {
+            if (blocked) {
+                delay(600L)
+            } else if (store.hideStartupAlerts && clashPort > 0) {
                 delay(2_500L)
                 val active = runCatching {
                     ClashApiClient.fetch(clashPort, clashSecret)

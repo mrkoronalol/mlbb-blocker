@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.1
+
+- Blocked match servers always show the match card; liveness filtering now applies only to allowed connections.
+- Fixed missing notifications for some Moscow IPs.
+
 ## 0.13.0
 
 - JSON backup/export/import for settings, profiles, rules, allowlist and history.
