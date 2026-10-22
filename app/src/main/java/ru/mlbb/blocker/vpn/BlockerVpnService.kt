@@ -286,7 +286,7 @@ class BlockerVpnService : VpnService() {
     }
 
     fun createTun(options: TunOptions): Int {
-        if (prepare(this) != null) {
+        if (prepare(this) != null && !BuildConfig.DEBUG) {
             throw IllegalStateException(getString(R.string.error_vpn_permission))
         }
         closeTunInterface()

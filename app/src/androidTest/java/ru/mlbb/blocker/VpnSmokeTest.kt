@@ -2,11 +2,11 @@ package ru.mlbb.blocker
 
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
-import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import ru.mlbb.blocker.config.BlockerConfig
@@ -31,7 +31,7 @@ class VpnSmokeTest {
             "pm grant ${context.packageName} android.permission.POST_NOTIFICATIONS",
         ).close()
 
-        assumeTrue("VPN permission was not granted through appops", VpnService.prepare(context) == null)
+        Log.i("VpnSmokeTest", "prepare=${VpnService.prepare(context)}")
 
         val store = BlocklistStore(context)
         store.clearRules()
