@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.2
+
+- Added a switch to allow or block the main connection server `154.85.91.151:10003`.
+- When disabled, this Moscow server is filtered and shows the match card.
+- Blocked match servers always show the card.
+
 ## 0.13.1
 
 - Blocked match servers always show the match card; liveness filtering now applies only to allowed connections.

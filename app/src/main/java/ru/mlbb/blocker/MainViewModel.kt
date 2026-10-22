@@ -80,6 +80,7 @@ data class UiState(
     val matchAlerts: Boolean = true,
     val hideStartupAlerts: Boolean = true,
     val autoStart: Boolean = true,
+    val allowStartupServer: Boolean = true,
     val showOnboarding: Boolean = false,
     val overlayPermissionGranted: Boolean = false,
     val updateInfo: UpdateInfo? = null,
@@ -117,6 +118,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             matchAlerts = store.matchAlerts,
             hideStartupAlerts = store.hideStartupAlerts,
             autoStart = store.autoStart,
+            allowStartupServer = store.allowStartupServer,
             showOnboarding = !store.onboardingDone,
             overlayPermissionGranted = runCatching { Settings.canDrawOverlays(application) }
                 .getOrDefault(false),
@@ -548,8 +550,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 currentUserId = android.os.Process.myUid() / 100000,
                 matchAlerts = store.matchAlerts,
                 hideStartupAlerts = store.hideStartupAlerts,
-            autoStart = store.autoStart,
-            showOnboarding = !store.onboardingDone,
+                autoStart = store.autoStart,
+                allowStartupServer = store.allowStartupServer,
+                showOnboarding = !store.onboardingDone,
                 overlayPermissionGranted = runCatching {
                     Settings.canDrawOverlays(getApplication())
                 }.getOrDefault(false),
@@ -577,6 +580,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setAutoStart(enabled: Boolean) {
         store.autoStart = enabled
         _ui.update { it.copy(autoStart = enabled) }
+    }
+
+    fun setAllowStartupServer(enabled: Boolean) {
+        store.allowStartupServer = enabled
+        _ui.update { it.copy(allowStartupServer = enabled) }
+        reloadIfRunning()
     }
 
     fun finishOnboarding() {
@@ -629,6 +638,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 matchAlerts = store.matchAlerts,
                 hideStartupAlerts = store.hideStartupAlerts,
                 autoStart = store.autoStart,
+                allowStartupServer = store.allowStartupServer,
                 showOnboarding = !store.onboardingDone,
             )
         }

@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
                     onMatchAlertsChange = viewModel::setMatchAlerts,
                     onHideStartupAlertsChange = viewModel::setHideStartupAlerts,
                     onAutoStartChange = viewModel::setAutoStart,
+                    onAllowStartupServerChange = viewModel::setAllowStartupServer,
                     onFinishOnboarding = viewModel::finishOnboarding,
                     onShowMatchDemo = viewModel::showMatchDemo,
                     onRefreshDiagnostics = viewModel::refreshMlbbInstalled,

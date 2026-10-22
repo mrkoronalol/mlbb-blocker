@@ -1,4 +1,4 @@
-﻿package ru.mlbb.blocker.vpn
+package ru.mlbb.blocker.vpn
 
 import android.app.KeyguardManager
 import android.app.NotificationManager
@@ -75,7 +75,7 @@ class MatchAlertManager(
     fun onMatch(ip: String, port: Int, network: String, blocked: Boolean) {
         if (!store.matchAlerts) return
         if (!GamePorts.isMatchPort(port) || Cidr.isPrivate(ip)) return
-        if (StartupEndpoints.isMainConnection(ip, port)) return
+        if (store.allowStartupServer && StartupEndpoints.isMainConnection(ip, port)) return
         val key = "$ip:$port"
 
         scope.launch(Dispatchers.IO) {

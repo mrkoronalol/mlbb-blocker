@@ -45,6 +45,7 @@ fun SettingsScreen(
     onMatchAlertsChange: (Boolean) -> Unit,
     onHideStartupAlertsChange: (Boolean) -> Unit,
     onAutoStartChange: (Boolean) -> Unit,
+    onAllowStartupServerChange: (Boolean) -> Unit,
     onShowMatchDemo: () -> Unit,
     onRefreshDiagnostics: () -> Unit,
     onDownloadGeoIp: () -> Unit,
@@ -177,6 +178,21 @@ fun SettingsScreen(
                     )
                 }
                 Switch(checked = ui.autoStart, onCheckedChange = onAutoStartChange)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Разрешать основной сервер .151", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "154.85.91.151:10003 будет идти напрямую и не показывать карточку. Выключите, чтобы блокировать его как московский.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = ui.allowStartupServer,
+                    onCheckedChange = onAllowStartupServerChange,
+                )
             }
         }
 

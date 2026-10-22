@@ -44,6 +44,12 @@ class BlocklistStore(context: Context) {
             prefs.edit().putBoolean(KEY_AUTO_START, value).apply()
         }
 
+    var allowStartupServer: Boolean
+        get() = prefs.getBoolean(KEY_ALLOW_STARTUP_SERVER, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_ALLOW_STARTUP_SERVER, value).apply()
+        }
+
     var onboardingDone: Boolean
         get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
         set(value) {
@@ -246,6 +252,7 @@ class BlocklistStore(context: Context) {
         private const val KEY_AUTO_START = "auto_start"
         private const val KEY_LAST_RUNNING = "last_running"
         private const val KEY_ONBOARDING_DONE = "onboarding_done"
+        private const val KEY_ALLOW_STARTUP_SERVER = "allow_startup_server"
         private const val KEY_STABILIZATION_LEGACY = "ping_stabilization"
     }
 }

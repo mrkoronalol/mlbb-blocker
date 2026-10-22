@@ -18,7 +18,7 @@ object BlockerConfig {
         val allowRules = (
             store.activeAllowValues() +
                 profile?.allowedCidrs.orEmpty() +
-                StartupEndpoints.CIDRS
+                if (store.allowStartupServer) StartupEndpoints.CIDRS else emptyList()
             ).distinct()
         return SingBoxConfigBuilder.build(
             rules = rules,
