@@ -129,7 +129,7 @@ class SingBoxConfigBuilderTest {
         assertTrue(portBlockIndex > allowIndex)
         assertTrue(rangeBlockIndex > allowIndex)
         assertEquals(10003, rules.getJSONObject(portBlockIndex).getJSONArray("port").getInt(0))
-        assertEquals("5000:5054", rules.getJSONObject(rangeBlockIndex).getJSONArray("port_range").getString(0))
+        assertEquals("5000:5058", rules.getJSONObject(rangeBlockIndex).getJSONArray("port_range").getString(0))
     }
 
     @Test

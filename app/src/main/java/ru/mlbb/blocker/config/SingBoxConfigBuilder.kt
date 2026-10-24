@@ -119,7 +119,7 @@ object SingBoxConfigBuilder {
             routeRules.put(
                 JSONObject()
                     .put("ip_cidr", JSONArray(profileRules))
-                    .put("port_range", JSONArray().put(GamePorts.MATCH_PORT_RANGE))
+                    .put("port_range", JSONArray(GamePorts.MATCH_PORT_RANGES))
                     .put("action", "route")
                     .put("outbound", "sink"),
             )
@@ -133,7 +133,7 @@ object SingBoxConfigBuilder {
             )
             routeRules.put(
                 JSONObject()
-                    .put("port_range", JSONArray().put(GamePorts.MATCH_PORT_RANGE))
+                    .put("port_range", JSONArray(GamePorts.MATCH_PORT_RANGES))
                     .put("action", "route")
                     .put("outbound", "sink"),
             )

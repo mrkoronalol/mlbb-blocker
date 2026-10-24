@@ -27,6 +27,18 @@ class GeoIpRecordMapperTest {
     }
 
     @Test
+    fun stripsCityDistrictAndTranslates() {
+        assertEquals(
+            "Москва",
+            GeoIpRecordMapper.city(mapOf("city" to "Moscow (Tsentralnyy administrativnyy okrug)")),
+        )
+        assertEquals(
+            "Франкфурт",
+            GeoIpRecordMapper.city(mapOf("city" to "Frankfurt am Main (Innenstadt III)")),
+        )
+    }
+
+    @Test
     fun returnsNullForMissingFields() {
         assertEquals(null, GeoIpRecordMapper.countryCode(emptyMap<String, Any>()))
         assertEquals(null, GeoIpRecordMapper.city(emptyMap<String, Any>()))

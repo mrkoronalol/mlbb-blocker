@@ -21,7 +21,7 @@ object GeoIpRecordMapper {
 
     fun translateCity(name: String?): String? {
         if (name.isNullOrBlank()) return null
-        return when (name.lowercase(Locale.ROOT)) {
+        return when (name.substringBefore(" (").trim().lowercase(Locale.ROOT)) {
             "moscow" -> "Москва"
             "novosibirsk" -> "Новосибирск"
             "yekaterinburg", "ekaterinburg" -> "Екатеринбург"

@@ -2,6 +2,7 @@ package ru.mlbb.blocker.data.geo
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import com.maxmind.db.Reader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -102,6 +103,7 @@ object GeoIpRepository {
             prefs?.edit()?.putString(KEY_MONTH, BUNDLED_LABEL)?.apply()
             _status.value = GeoIpStatus.Ready(BUNDLED_LABEL)
         } catch (t: Throwable) {
+            Log.e("GeoIpRepository", "bundled database install failed", t)
             temp.delete()
             _status.value = GeoIpStatus.Error("встроенная база: ${t.message ?: t.javaClass.simpleName}")
         }

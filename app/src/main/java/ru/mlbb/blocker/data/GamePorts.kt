@@ -2,9 +2,22 @@ package ru.mlbb.blocker.data
 
 object GamePorts {
     const val MATCH_PORT = 10003
-    const val MATCH_PORT_RANGE = "5000:5054"
 
-    val MATCH_PORTS: Set<Int> = setOf(MATCH_PORT) + (5000..5054)
+    val MATCH_PORT_RANGES: List<String> = listOf(
+        "5000:5058",
+        "5500:5599",
+        "10011:10013",
+        "10063:10063",
+    )
+
+    val MATCH_PORTS: Set<Int> = buildSet {
+        add(MATCH_PORT)
+        addAll(5000..5058)
+        addAll(5500..5599)
+        addAll(10011..10013)
+        add(10063)
+    }
+
     val SAFE_PORTS: Set<Int> = setOf(30021, 30071, 30190, 30220)
     val SAFE_PORT_LIST: List<Int> = listOf(30190, 30021, 30071, 30220)
 
