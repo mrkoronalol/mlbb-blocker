@@ -40,11 +40,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -68,6 +70,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.mlbb.blocker.BuildConfig
@@ -140,7 +143,16 @@ fun BlockerApp(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = AppColors.SurfaceHigh,
+                    contentColor = AppColors.Text,
+                    actionColor = AppColors.CyanLight,
+                )
+            }
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -222,8 +234,6 @@ fun BlockerApp(
                     1 -> MatchScreen(
                         ui = ui,
                         onStartGame = onStartGame,
-                        onSelectProfile = onSelectProfile,
-                        onFastRejectChange = onFastRejectChange,
                         onStartDiscovery = onStartDiscovery,
                         onStopDiscovery = onStopDiscovery,
                         onMatchResult = onMatchResult,
@@ -319,17 +329,20 @@ private fun HomeScreen(
     onOpenAbout: () -> Unit,
     onHealthAction: () -> Unit,
 ) {
+    var infoProfile by remember { mutableStateOf<RegionProfile?>(null) }
+    val error = ui.status as? BlockerStatus.Error
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(56.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
@@ -338,55 +351,59 @@ private fun HomeScreen(
                     Icons.Default.Lock,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(22.dp),
                 )
             }
-            Spacer(Modifier.size(14.dp))
+            Spacer(Modifier.size(12.dp))
             Column {
                 Text(
                     "MLBB Blocker",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     stringResource(R.string.main_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
                 )
             }
         }
 
-        ui.updateInfo?.let { update ->
+        if (error != null) {
+            NoticeCard(
+                icon = Icons.Default.Warning,
+                color = MaterialTheme.colorScheme.error,
+                title = "Ошибка",
+                text = error.message,
+            )
+        } else if (ui.updateInfo != null) {
             UpdateBanner(
-                update = update,
+                update = ui.updateInfo,
                 download = ui.updateDownload,
                 installing = ui.updateInstalling,
                 onDownload = onDownloadUpdate,
                 onInstall = onInstallUpdate,
             )
-        }
-
-        ui.healthIssues.firstOrNull()?.let { issue ->
-            HealthBanner(issue = issue, onFix = onHealthAction)
+        } else {
+            ui.healthIssues.firstOrNull()?.let { issue ->
+                HealthBanner(issue = issue, onFix = onHealthAction)
+            }
         }
 
         if (ui.showOnboarding) {
             OnboardingCard(onDone = onFinishOnboarding)
         }
 
-        EsportsCard(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-            ),
-        ) {
+        EsportsCard {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(10.dp)
+                            .size(9.dp)
                             .clip(CircleShape)
                             .background(statusColor(ui.status)),
                     )
@@ -399,83 +416,23 @@ private fun HomeScreen(
                     Spacer(Modifier.weight(1f))
                     Text(
                         stringResource(R.string.rules_count, ui.effectiveRuleCount),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-
-                ToggleRow(
-                    title = stringResource(R.string.only_mlbb),
-                    description = stringResource(R.string.only_mlbb_desc),
-                    checked = true,
-                    enabled = false,
-                    onCheckedChange = {},
-                )
-                ToggleRow(
+                CompactSwitchRow(
                     title = stringResource(R.string.discovery_mode),
-                    description = stringResource(R.string.discovery_mode_desc),
                     checked = ui.discovery,
-                    enabled = true,
                     onCheckedChange = onDiscoveryChange,
                 )
+                if (ui.discovery) {
+                    Text(
+                        "Правила не применяются — только сбор IP",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AppColors.Warning,
+                    )
+                }
             }
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                "Профиль блокировки",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                "Выберите один профиль до поиска матча. «Москва» и «Новосибирск» разрешают только выбранный регион и блокируют остальные матч-серверы.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            RegionProfiles.all.forEach { profile ->
-                ProfileCard(
-                    profile = profile,
-                    selected = ui.selectedProfile == profile.id,
-                    onClick = { onSelectProfile(profile.id) },
-                )
-            }
-        }
-
-        if (!ui.mlbbInstalled) {
-            NoticeCard(
-                icon = Icons.Default.Warning,
-                color = MaterialTheme.colorScheme.error,
-                title = "MLBB не найдена",
-                text = stringResource(R.string.error_mlbb_missing),
-            )
-        }
-
-        val error = ui.status as? BlockerStatus.Error
-        if (error != null) {
-            NoticeCard(
-                icon = Icons.Default.Warning,
-                color = MaterialTheme.colorScheme.error,
-                title = "Ошибка",
-                text = error.message,
-            )
-        }
-
-        if (ui.discovery) {
-            NoticeCard(
-                icon = Icons.Default.Info,
-                color = MaterialTheme.colorScheme.secondary,
-                title = "Обнаружение включено",
-                text = "Правила не применяются. Зайдите в игру, затем откройте вкладку «Монитор» и заблокируйте ненужные IP.",
-            )
-        } else if (ui.selectedProfile == null) {
-            NoticeCard(
-                icon = Icons.Default.Warning,
-                color = Color(0xFFFFC857),
-                title = "Профиль не выбран",
-                text = "Выберите профиль блокировки: Москва, ДВ или Новосибирск.",
-            )
         }
 
         if (ui.isRunning) {
@@ -508,53 +465,158 @@ private fun HomeScreen(
             }
         }
 
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Профиль",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            IconButton(
+                onClick = {
+                    infoProfile = ui.selectedProfile?.let(RegionProfiles::byId)
+                        ?: RegionProfiles.all.firstOrNull()
+                },
+                modifier = Modifier.size(30.dp),
+            ) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = "Описание профилей",
+                    tint = AppColors.CyanLight,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            if (ui.selectedProfile == null) {
+                Text(
+                    "не выбран",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = AppColors.Warning,
+                )
+            }
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            RegionProfiles.all.forEach { profile ->
+                CompactProfileCard(
+                    profile = profile,
+                    selected = ui.selectedProfile == profile.id,
+                    onClick = { onSelectProfile(profile.id) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatCard("Правила", ui.effectiveRuleCount.toString(), Modifier.weight(1f))
             StatCard("Собрано IP", ui.connections.size.toString(), Modifier.weight(1f))
-        }
-
-        EsportsCard(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-            ),
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    "Как это работает",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    "Приложение перехватывает трафик только Mobile Legends. Пакеты к IP из блоклиста отбрасываются, остальной трафик игры идёт напрямую. Удалённого VPN-сервера нет.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    "Пока блокировка включена, приложение собирает все IP, к которым подключается MLBB, и позволяет проверить пинг до каждого сервера.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    "Перед включением полностью закройте MLBB, чтобы игра заново проверила серверы.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    "Блокировка не гарантирует смену региона: MLBB может выбрать сервер по аккаунту или матчмейкингу.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
 
         OutlinedButton(
             onClick = onOpenAbout,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("О приложении и возможностях")
+            Text("О приложении")
+        }
+    }
+
+    infoProfile?.let { profile ->
+        ProfileInfoSheet(profile = profile, onDismiss = { infoProfile = null })
+    }
+}
+
+@Composable
+private fun CompactProfileCard(
+    profile: RegionProfile,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent = profileAccent(profile)
+    EsportsCard(
+        modifier = modifier.height(58.dp).clickable(onClick = onClick),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) accent.copy(alpha = 0.16f) else AppColors.Surface,
+        ),
+        border = BorderStroke(
+            width = if (selected) 1.5.dp else 1.dp,
+            color = if (selected) accent else AppColors.Border,
+        ),
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                profile.badge,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (selected) accent else AppColors.Text,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfileInfoSheet(profile: RegionProfile, onDismiss: () -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = AppColors.SurfaceHigh,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                profile.title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                profile.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Pill("разрешено: ${profile.allowedCidrs.size}", AppColors.Success)
+                Pill("блокируется: ${profile.rules.size}", AppColors.Danger)
+            }
+            if (profile.blockOtherMatchServers) {
+                Text(
+                    "Остальные матч-серверы блокируются автоматически.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text("Понятно")
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingCard(onDone: () -> Unit) {
+    EsportsCard(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+        ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                "Разрешите VPN и включите блокировку.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            TextButton(onClick = onDone) { Text("Ок") }
         }
     }
 }
@@ -573,68 +635,42 @@ private fun HealthBanner(issue: HealthIssue, onFix: () -> Unit) {
     }
     EsportsCard(
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f),
+            containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.10f),
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f)),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp),
-                )
+            Icon(
+                Icons.Default.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(18.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.error,
+                    maxLines = 1,
+                )
+                Text(
+                    text,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                text,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(onClick = onFix) {
-                Text(stringResource(R.string.health_fix))
-            }
-        }
-    }
-}
-
-@Composable
-private fun OnboardingCard(onDone: () -> Unit) {
-    EsportsCard(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
-        ),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                "Быстрый старт",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                "1. Выдайте разрешение VPN при первом включении.\n" +
-                    "2. Разрешите уведомления и показ поверх игры.\n" +
-                    "3. Выберите профиль и включите блокировку.\n" +
-                    "4. Запустите MLBB.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(onClick = onDone) {
-                Text("Понятно")
+            TextButton(onClick = onFix) {
+                Text(
+                    stringResource(R.string.health_fix),
+                    style = MaterialTheme.typography.labelSmall,
+                )
             }
         }
     }
@@ -749,108 +785,6 @@ private fun profileAccent(profile: RegionProfile): Color = when (profile.id) {
     RegionProfiles.ID_MOSCOW -> Color(0xFF4C7DFF)
     RegionProfiles.ID_FAR_EAST -> Color(0xFF2FA36B)
     else -> Color(0xFFE08A2E)
-}
-
-@Composable
-internal fun ProfileCard(
-    profile: RegionProfile,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val accent = profileAccent(profile)
-    EsportsCard(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) accent.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surface,
-        ),
-        border = BorderStroke(
-            width = if (selected) 1.5.dp else 1.dp,
-            color = if (selected) accent.copy(alpha = 0.65f)
-            else MaterialTheme.colorScheme.outline.copy(alpha = 0.20f),
-        ),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(accent.copy(alpha = 0.16f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    profile.badge,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = accent,
-                )
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        profile.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    if (selected) {
-                        Text(
-                            "Активен",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = accent,
-                        )
-                    }
-                }
-                Text(
-                    profile.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (selected) {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    tint = accent,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ToggleRow(
-    title: String,
-    description: String,
-    checked: Boolean,
-    enabled: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled,
-        )
-    }
 }
 
 @Composable

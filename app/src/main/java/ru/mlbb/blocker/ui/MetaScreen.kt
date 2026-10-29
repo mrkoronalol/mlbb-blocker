@@ -65,7 +65,6 @@ import ru.mlbb.blocker.data.meta.MetaTier
 @Composable
 fun MetaScreen(viewModel: MetaViewModel = viewModel()) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
-    var showApiDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -76,7 +75,6 @@ fun MetaScreen(viewModel: MetaViewModel = viewModel()) {
             MetaHeader(
                 state = state,
                 onRefresh = viewModel::refresh,
-                onEditApi = { showApiDialog = true },
             )
         }
         item {
@@ -133,10 +131,12 @@ fun MetaScreen(viewModel: MetaViewModel = viewModel()) {
             }
         } else if (snapshot == null) {
             item {
-                MetaEmptyState(
-                    error = state.error,
-                    onRetry = viewModel::refresh,
-                    onEditApi = { showApiDialog = true },
+                EmptyStateCard(
+                    icon = null,
+                    title = "Нет связи с MLBB Meta",
+                    text = state.error ?: "Проверьте подключение к интернету и повторите.",
+                    actionLabel = "Повторить",
+                    onAction = viewModel::refresh,
                 )
             }
         } else {
@@ -186,17 +186,6 @@ fun MetaScreen(viewModel: MetaViewModel = viewModel()) {
         }
     }
 
-    if (showApiDialog) {
-        ApiBaseDialog(
-            current = state.apiBase,
-            onDismiss = { showApiDialog = false },
-            onSave = {
-                showApiDialog = false
-                viewModel.setApiBase(it)
-            },
-        )
-    }
-
     val hero = state.selectedHero
     if (hero != null) {
         ModalBottomSheet(
@@ -217,7 +206,6 @@ fun MetaScreen(viewModel: MetaViewModel = viewModel()) {
 private fun MetaHeader(
     state: MetaUiState,
     onRefresh: () -> Unit,
-    onEditApi: () -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -247,15 +235,6 @@ private fun MetaHeader(
                 tint = AppColors.CyanLight,
             )
         }
-    }
-    TextButton(onClick = onEditApi, modifier = Modifier.padding(top = 2.dp)) {
-        Text(
-            "API: ${state.apiBase}",
-            style = MaterialTheme.typography.labelSmall,
-            color = AppColors.TextMuted,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 
@@ -391,7 +370,7 @@ private fun TierSection(
 @Composable
 private fun HeroTile(hero: MetaHero, banned: Boolean, onClick: () -> Unit) {
     Column(
-        modifier = Modifier.width(62.dp).clickable(onClick = onClick),
+        modifier = Modifier.width(78.dp).clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -400,12 +379,12 @@ private fun HeroTile(hero: MetaHero, banned: Boolean, onClick: () -> Unit) {
                 model = hero.imageUrl,
                 contentDescription = hero.displayName,
                 modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .size(72.dp)
+                    .clip(RoundedCornerShape(18.dp))
                     .border(
                         width = 1.dp,
                         color = if (banned) AppColors.Danger.copy(alpha = 0.7f) else AppColors.Border,
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(18.dp),
                     )
                     .background(AppColors.SurfaceHigher),
                 placeholder = ColorPainter(AppColors.SurfaceHigher),
@@ -439,34 +418,6 @@ private fun HeroTile(hero: MetaHero, banned: Boolean, onClick: () -> Unit) {
     }
 }
 
-@Composable
-private fun MetaEmptyState(
-    error: String?,
-    onRetry: () -> Unit,
-    onEditApi: () -> Unit,
-) {
-    EsportsCard {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(
-                "Мета недоступна",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                error ?: "Проверьте подключение к интернету.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onRetry) { Text("Повторить") }
-                TextButton(onClick = onEditApi) { Text("Указать адрес API") }
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -623,38 +574,6 @@ private fun StatRow(label: String, value: Double?, color: Color) {
     }
 }
 
-@Composable
-private fun ApiBaseDialog(
-    current: String,
-    onDismiss: () -> Unit,
-    onSave: (String) -> Unit,
-) {
-    var value by remember { mutableStateOf(current) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Адрес API сайта") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "Укажите домен, где развёрнут mlbb-meta. Приложение запросит /api/v1/app/meta.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                OutlinedTextField(
-                    value = value,
-                    onValueChange = { value = it },
-                    singleLine = true,
-                    label = { Text("https://example.com") },
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onSave(value) }) { Text("Сохранить") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Отмена") }
-        },
-    )
-}
 
 private fun tierColor(tier: MetaTier): Color = when (tier) {
     MetaTier.S -> AppColors.Purple

@@ -69,7 +69,7 @@ class MetaApi(private val baseUrl: String) {
                 ),
             )
         } catch (t: Throwable) {
-            MetaResult.Failure("Не удалось разобрать ответ API: ${t.message ?: "ошибка"}")
+            MetaResult.Failure("Сайт вернул неожиданный ответ")
         }
     }
 
@@ -117,7 +117,7 @@ class MetaApi(private val baseUrl: String) {
             }
             MetaResult.Success(MetaCounters(heroId, names, ids))
         } catch (t: Throwable) {
-            MetaResult.Failure("Не удалось загрузить контрпики: ${t.message ?: "ошибка"}")
+            MetaResult.Failure("Не удалось загрузить контрпики")
         }
     }
 
@@ -154,7 +154,7 @@ class MetaApi(private val baseUrl: String) {
                 runCatching { connection.disconnect() }
             }
         } catch (t: Throwable) {
-            HttpText.Failure("Сайт недоступен: ${t.message ?: "ошибка сети"}")
+            HttpText.Failure("Сайт не отвечает")
         }
     }
 

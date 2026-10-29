@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.17.0
+
+- Compact home: three profile buttons in a row, descriptions moved to an info bottom sheet.
+- Primary enable/disable button moved above profiles and fits small screens without scrolling.
+- Blocklist rows are compact (monospace IP + region badge, no long notes); swipe left to delete.
+- Settings reorganized into expandable sections; rules row is now a single line with a refresh icon.
+- Meta shows a friendly cloud empty state instead of raw API errors; hero tiles enlarged to 72dp.
+- Match screen no longer duplicates the profile picker.
+
 ## 0.16.0
 
 - Redesigned UI to match the mlbb-meta site: navy `#0B0F19`, cards `#14182A` with `#2A3756` borders, blue/cyan accents.

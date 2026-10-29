@@ -1,5 +1,12 @@
 package ru.mlbb.blocker.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,36 +16,38 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ru.mlbb.blocker.BuildConfig
 import ru.mlbb.blocker.R
 import ru.mlbb.blocker.UiState
 import ru.mlbb.blocker.data.geo.GeoIpStatus
+import ru.mlbb.blocker.data.meta.MetaRepository
 import ru.mlbb.blocker.data.rules.RulesSource
-import androidx.compose.ui.res.stringResource
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
-import android.widget.Toast
 
 @Composable
 fun SettingsScreen(
@@ -61,12 +70,20 @@ fun SettingsScreen(
     onUnknownPortAlertsChange: (Boolean) -> Unit,
     onStableOnlyAlertsChange: (Boolean) -> Unit,
 ) {
+    var expanded by rememberSaveable { mutableStateOf(setOf("blocking")) }
+    var showApiDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    fun toggle(id: String) {
+        expanded = if (id in expanded) expanded - id else expanded + id
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
             "Настройки",
@@ -74,264 +91,176 @@ fun SettingsScreen(
             fontWeight = FontWeight.SemiBold,
         )
 
-        SettingsCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Режим обнаружения", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        "Не блокировать правила, а только записывать подключения MLBB.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(checked = ui.discovery, onCheckedChange = onDiscoveryChange)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
-            Text(
-                "Перехватывается только com.mobile.legends. Остальной трафик телефона идёт напрямую.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        ExpandableCard(
+            title = "Блокировка",
+            subtitle = "Обнаружение, отказ, автозапуск",
+            expanded = "blocking" in expanded,
+            onToggle = { toggle("blocking") },
+        ) {
+            CompactSwitchRow(
+                title = stringResource(R.string.discovery_mode),
+                checked = ui.discovery,
+                onCheckedChange = onDiscoveryChange,
+            )
+            CompactSwitchRow(
+                title = "Быстрый отказ (RST)",
+                checked = ui.fastReject,
+                onCheckedChange = onFastRejectChange,
+            )
+            CompactSwitchRow(
+                title = "Автозапуск после перезагрузки",
+                checked = ui.autoStart,
+                onCheckedChange = onAutoStartChange,
             )
         }
 
-        SettingsCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Правила с сервера", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        stringResource(R.string.rules_settings_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Text(
-                stringResource(
-                    R.string.rules_status_line,
-                    rulesSourceLabel(ui.rulesStatus.source),
-                    ui.rulesStatus.updatedAt,
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        ExpandableCard(
+            title = "Уведомления",
+            subtitle = "Карточка матча и фильтры",
+            expanded = "alerts" in expanded,
+            onToggle = { toggle("alerts") },
+        ) {
+            CompactSwitchRow(
+                title = "Карточка матча",
+                checked = ui.matchAlerts,
+                onCheckedChange = onMatchAlertsChange,
             )
-            ui.rulesStatus.lastError?.let { error ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Ошибка: $error",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-            Button(
-                onClick = onRefreshRules,
-                enabled = !ui.rulesStatus.checking,
-            ) {
-                Text(
-                    if (ui.rulesStatus.checking) {
-                        stringResource(R.string.rules_checking)
+                    if (ui.overlayPermissionGranted) {
+                        "Поверх игры: разрешено"
                     } else {
-                        stringResource(R.string.rules_check_now)
+                        "Поверх игры: нет доступа"
                     },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (ui.overlayPermissionGranted) {
+                        AppColors.Success
+                    } else {
+                        AppColors.Warning
+                    },
+                    modifier = Modifier.weight(1f),
                 )
-            }
-        }
-
-        SettingsCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Быстрый отказ (RST)", style = MaterialTheme.typography.bodyLarge)
+                TextButton(onClick = { openOverlaySettings(context) }) {
                     Text(
-                        "Вместо тихого drop отправлять RST/ICMP — игра быстрее понимает, что сервер недоступен.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        if (ui.overlayPermissionGranted) "Изменить" else "Разрешить",
+                        style = MaterialTheme.typography.labelSmall,
                     )
-                }
-                Switch(checked = ui.fastReject, onCheckedChange = onFastRejectChange)
-            }
-            Text(
-                "Перехватываются com.mobile.legends и com.mobilelegends.mi.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        val context = LocalContext.current
-        SettingsCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Карточка матча", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        "Показывать сервер и пинг поверх игры, когда MLBB подключается к матч-серверу.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(checked = ui.matchAlerts, onCheckedChange = onMatchAlertsChange)
-            }
-            Text(
-                if (ui.overlayPermissionGranted) {
-                    "Поверх игры: разрешено"
-                } else {
-                    "Поверх игры: не разрешено — покажем обычное уведомление."
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = if (ui.overlayPermissionGranted) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.tertiary
-                },
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (ui.overlayPermissionGranted) {
-                    TextButton(onClick = { openOverlaySettings(context) }) {
-                        Text("Изменить разрешение")
-                    }
-                } else {
-                    Button(onClick = { openOverlaySettings(context) }) {
-                        Text("Разрешить показ поверх игры")
-                    }
                 }
                 TextButton(onClick = onShowMatchDemo) {
-                    Text("Проверить карточку")
+                    Text("Тест", style = MaterialTheme.typography.labelSmall)
                 }
             }
-            Text(
-                "На Xiaomi/Redmi может понадобиться разрешение «Показывать всплывающие окна в фоне». Без overlay-разрешения показывается heads-up уведомление.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            CompactSwitchRow(
+                title = "Скрывать стартовые подключения",
+                checked = ui.hideStartupAlerts,
+                onCheckedChange = onHideStartupAlertsChange,
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Скрывать стартовые подключения", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        "Не показывать карточку для разрешённых подключений, если они закрылись за 2,5 секунды. Заблокированные серверы показываются всегда.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = ui.hideStartupAlerts,
-                    onCheckedChange = onHideStartupAlertsChange,
-                )
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.settings_stable_alerts_title),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Text(
-                        stringResource(R.string.settings_stable_alerts_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = ui.stableOnlyAlerts,
-                    onCheckedChange = onStableOnlyAlertsChange,
-                )
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Автозапуск после перезагрузки", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        "Запускать VPN автоматически, если блокировка была включена до перезагрузки.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(checked = ui.autoStart, onCheckedChange = onAutoStartChange)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Разрешать основной сервер .151", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        "154.85.91.151:10003 будет идти напрямую и не показывать карточку. Выключите, чтобы блокировать его как московский.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = ui.allowStartupServer,
-                    onCheckedChange = onAllowStartupServerChange,
-                )
-            }
+            CompactSwitchRow(
+                title = stringResource(R.string.settings_stable_alerts_title),
+                checked = ui.stableOnlyAlerts,
+                onCheckedChange = onStableOnlyAlertsChange,
+            )
+            CompactSwitchRow(
+                title = stringResource(R.string.settings_unknown_ports_title),
+                checked = ui.unknownPortAlerts,
+                onCheckedChange = onUnknownPortAlertsChange,
+            )
         }
 
-        SettingsCard {
+        ExpandableCard(
+            title = "Серверы",
+            subtitle = "Основной сервер и GeoIP",
+            expanded = "servers" in expanded,
+            onToggle = { toggle("servers") },
+        ) {
+            CompactSwitchRow(
+                title = "Разрешать основной сервер .151",
+                checked = ui.allowStartupServer,
+                onCheckedChange = onAllowStartupServerChange,
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.settings_unknown_ports_title),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Text(
-                        stringResource(R.string.settings_unknown_ports_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = ui.unknownPortAlerts,
-                    onCheckedChange = onUnknownPortAlertsChange,
-                )
-            }
-        }
-
-        DiagnosticsCard(ui = ui, onRefresh = onRefreshDiagnostics)
-
-        SettingsCard {
-            Text(
-                "GeoIP база",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            val geoStatus = ui.geoIpStatus
-            Text(
-                when (geoStatus) {
-                    GeoIpStatus.NotDownloaded -> "не загружена"
-                    GeoIpStatus.Preparing -> "подготовка встроенной базы…"
-                    is GeoIpStatus.Downloading -> "загрузка… ${geoStatus.progress}% (${geoStatus.received / 1024 / 1024} МБ)"
-                    is GeoIpStatus.Ready -> "готова · ${geoStatus.month}"
-                    is GeoIpStatus.Error -> "ошибка: ${geoStatus.message}"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = if (geoStatus is GeoIpStatus.Error) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                "База DB-IP Lite City (IPv4, ~59 МБ) уже встроена в APK и распаковывается при первом запуске. Кнопка обновляет её до свежей версии. Лицензия CC BY 4.0, источник: db-ip.com / sapics/ip-location-db.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(
-                onClick = onDownloadGeoIp,
-                enabled = geoStatus !is GeoIpStatus.Downloading && geoStatus !is GeoIpStatus.Preparing,
-            ) {
                 Text(
-                    when (geoStatus) {
-                        is GeoIpStatus.Ready -> "Обновить базу"
-                        GeoIpStatus.Preparing -> "Подготовка…"
-                        else -> "Скачать базу"
+                    "GeoIP: " + when (val status = ui.geoIpStatus) {
+                        GeoIpStatus.NotDownloaded -> "не загружена"
+                        GeoIpStatus.Preparing -> "подготовка"
+                        is GeoIpStatus.Downloading -> "${status.progress}%"
+                        is GeoIpStatus.Ready -> status.month
+                        is GeoIpStatus.Error -> "ошибка"
                     },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (ui.geoIpStatus is GeoIpStatus.Error) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                TextButton(
+                    onClick = onDownloadGeoIp,
+                    enabled = ui.geoIpStatus !is GeoIpStatus.Downloading &&
+                        ui.geoIpStatus !is GeoIpStatus.Preparing,
+                ) {
+                    Text("Обновить", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+
+        EsportsCard(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier.padding(start = 16.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Правила: ${ui.rulesStatus.updatedAt}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        rulesSourceLabel(ui.rulesStatus.source),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (ui.rulesStatus.checking) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.padding(12.dp).heightIn(max = 18.dp),
+                        strokeWidth = 2.dp,
+                        color = AppColors.Blue,
+                    )
+                } else {
+                    IconButton(onClick = onRefreshRules) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Обновить правила",
+                            tint = AppColors.CyanLight,
+                        )
+                    }
+                }
+            }
+            ui.rulesStatus.lastError?.let { error ->
+                Text(
+                    error,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
 
-        SettingsCard {
-            Text(
-                "Резервная копия",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                "Профиль, блоклист, исключения, настройки, история IP, матчей и пинга. Файл JSON можно сохранить в Downloads или облако.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        ExpandableCard(
+            title = "Данные",
+            subtitle = "Резервная копия",
+            expanded = "data" in expanded,
+            onToggle = { toggle("data") },
+        ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = onExportBackup,
@@ -348,174 +277,181 @@ fun SettingsScreen(
                     Text("Импорт")
                 }
             }
-            if (ui.backupBusy) {
-                Text(
-                    "Работа с файлом…",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        ui.pendingImport?.let { summary ->
-            AlertDialog(
-                onDismissRequest = onCancelImport,
-                title = { Text("Восстановить данные?") },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            "Версия: ${summary.appVersion.ifBlank { "неизвестна" }}",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Text(
-                            "Правила: ${summary.rules} · исключения: ${summary.allowRules}\n" +
-                                "IP: ${summary.endpoints} · блокировки: ${summary.blockedAttempts}\n" +
-                                "Матчи: ${summary.matchSessions} · пинг: ${summary.pingSamples}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        TextButton(onClick = { onApplyImport(true) }) {
-                            Text("Объединить с текущими")
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { onApplyImport(false) }) {
-                        Text("Заменить", color = MaterialTheme.colorScheme.error)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = onCancelImport) {
-                        Text("Отмена")
-                    }
-                },
-            )
-        }
-
-        SettingsCard {
             Text(
-                "Монитор и пинг",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                "Пока блокировка включена, приложение собирает все IP подключений MLBB и сохраняет их между запусками. Во вкладке «Монитор» можно фильтровать серверы по регионам, измерить TCP-пинг и сразу заблокировать IP или подсеть.",
-                style = MaterialTheme.typography.bodySmall,
+                "Профиль, блоклист, исключения и история в одном JSON.",
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        SettingsCard {
+        ExpandableCard(
+            title = "Диагностика",
+            subtitle = "Проверка, журнал",
+            expanded = "diagnostics" in expanded,
+            onToggle = { toggle("diagnostics") },
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Пользователь ${ui.currentUserId} · VPN ${if (ui.vpnPermissionGranted) "да" else "нет"}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onRefreshDiagnostics) {
+                    Text("Проверить", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            ui.mlbbPackages.forEach { info ->
+                val found = info.installed && info.enabled
+                Text(
+                    "${info.packageName}: ${if (found) "найден" else "нет"}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (found) AppColors.Success else MaterialTheme.colorScheme.error,
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     "Журнал ядра",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(onClick = onClearLogs) {
-                    Text("Очистить")
+                    Text("Очистить", style = MaterialTheme.typography.labelSmall)
+                }
+                TextButton(
+                    onClick = {
+                        copyDiagnostics(context, ui)
+                        Toast.makeText(context, "Диагностика скопирована", Toast.LENGTH_SHORT).show()
+                    },
+                ) {
+                    Text("Скопировать", style = MaterialTheme.typography.labelSmall)
                 }
             }
-            if (ui.logs.isEmpty()) {
-                Text(
-                    "Журнал пуст",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
+            if (ui.logs.isNotEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 260.dp)
+                        .heightIn(max = 180.dp)
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    ui.logs.takeLast(40).forEach { line ->
+                    ui.logs.takeLast(30).forEach { line ->
                         Text(
                             line,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
             }
         }
 
-        SettingsCard {
+        ExpandableCard(
+            title = "Для разработчиков",
+            subtitle = "Адрес API меты",
+            expanded = "dev" in expanded,
+            onToggle = { toggle("dev") },
+        ) {
             Text(
-                "MLBB Blocker ${BuildConfig.VERSION_NAME}",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
+                MetaRepository.apiBase(context),
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color = AppColors.CyanLight,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
+            TextButton(onClick = { showApiDialog = true }) {
+                Text("Изменить адрес API", style = MaterialTheme.typography.labelSmall)
+            }
             Text(
-                "Локальный фильтр пакетов для Mobile Legends. Удалённого VPN-сервера нет, трафик не перенаправляется в другой регион. Блокировка IP не гарантирует смену игрового региона.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                "Использование может нарушать правила Moonton. Вы действуете на свой риск.",
-                style = MaterialTheme.typography.bodySmall,
+                "Версия ${BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+
+    ui.pendingImport?.let { summary ->
+        AlertDialog(
+            onDismissRequest = onCancelImport,
+            title = { Text("Восстановить данные?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Версия: ${summary.appVersion.ifBlank { "неизвестна" }}",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        "Правила: ${summary.rules} · исключения: ${summary.allowRules}\n" +
+                            "IP: ${summary.endpoints} · матчи: ${summary.matchSessions}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = { onApplyImport(true) }) {
+                        Text("Объединить с текущими")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { onApplyImport(false) }) {
+                    Text("Заменить", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onCancelImport) { Text("Отмена") }
+            },
+        )
+    }
+
+    if (showApiDialog) {
+        ApiBaseDialog(
+            current = MetaRepository.apiBase(context),
+            onDismiss = { showApiDialog = false },
+            onSave = {
+                MetaRepository.setApiBase(context, it)
+                showApiDialog = false
+            },
+        )
     }
 }
 
 @Composable
-private fun DiagnosticsCard(ui: UiState, onRefresh: () -> Unit) {
-    val context = LocalContext.current
-    SettingsCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "Диагностика",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
+private fun ApiBaseDialog(
+    current: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var value by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Адрес API меты") },
+        text = {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { value = it },
+                singleLine = true,
+                label = { Text("https://example.com") },
+                modifier = Modifier.fillMaxWidth(),
             )
-            TextButton(onClick = onRefresh) {
-                Text("Проверить")
-            }
-        }
-        Text(
-            "Пользователь: ${ui.currentUserId} · VPN: ${if (ui.vpnPermissionGranted) "разрешён" else "нет"} · Сервис: ${statusText(ui.status)} · Правил: ${ui.effectiveRuleCount}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        ui.mlbbPackages.forEach { info ->
-            val found = info.installed && info.enabled
-            Text(
-                "${info.packageName}: ${if (found) "найден" else "не найден"}" +
-                    (info.versionName?.let { " · $it" } ?: "") +
-                    (info.uid?.let { " · uid $it" } ?: ""),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (found) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-            )
-        }
-        if (!ui.mlbbInstalled) {
-            Text(
-                "Если игра установлена в Dual Apps или рабочем профиле, приложение в основном профиле её не увидит — Android не даёт обычному приложению доступ к пакетам другого профиля.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-        TextButton(
-            onClick = {
-                copyDiagnostics(context, ui)
-                Toast.makeText(context, "Диагностика скопирована", Toast.LENGTH_SHORT).show()
-            },
-        ) {
-            Text("Скопировать диагностику")
-        }
-    }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(value) }) { Text("Сохранить") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Отмена") }
+        },
+    )
 }
 
 private fun rulesSourceLabel(source: RulesSource): String = when (source) {
-    RulesSource.BUILT_IN -> "встроенные"
-    RulesSource.ASSET -> "из APK"
-    RulesSource.CACHED -> "сохранённые"
-    RulesSource.REMOTE -> "с GitHub"
+    RulesSource.BUILT_IN -> "встроенные · обновление не применялось"
+    RulesSource.ASSET -> "из APK · проверка раз в сутки"
+    RulesSource.CACHED -> "сохранённые · проверка раз в сутки"
+    RulesSource.REMOTE -> "с GitHub · проверка раз в сутки"
 }
 
 private fun openOverlaySettings(context: Context) {
@@ -525,7 +461,11 @@ private fun openOverlaySettings(context: Context) {
     ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     runCatching { context.startActivity(intent) }
         .onFailure {
-            Toast.makeText(context, "Не удалось открыть настройки разрешения", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                "Не удалось открыть настройки разрешения",
+                Toast.LENGTH_SHORT,
+            ).show()
         }
 }
 
@@ -548,19 +488,4 @@ private fun copyDiagnostics(context: Context, ui: UiState) {
     }
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText("MLBB Blocker diagnostics", text))
-}
-
-@Composable
-private fun SettingsCard(content: @Composable () -> Unit) {
-    EsportsCard(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            content()
-        }
-    }
 }

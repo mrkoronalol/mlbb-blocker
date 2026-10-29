@@ -24,7 +24,6 @@ data class MetaUiState(
     val snapshot: MetaSnapshot? = null,
     val error: String? = null,
     val bans: Set<String> = emptySet(),
-    val apiBase: String = "",
     val expandedTiers: Set<MetaTier> = setOf(MetaTier.S, MetaTier.A),
     val selectedHero: MetaHero? = null,
     val counters: MetaCounters? = null,
@@ -39,7 +38,6 @@ class MetaViewModel(application: Application) : AndroidViewModel(application) {
         MetaUiState(
             region = MetaRepository.region(application),
             bans = MetaRepository.draftBans(application),
-            apiBase = MetaRepository.apiBase(application),
         ),
     )
     val ui: StateFlow<MetaUiState> = _ui.asStateFlow()
@@ -163,11 +161,5 @@ class MetaViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleBan(heroId: String) {
         val updated = MetaRepository.toggleDraftBan(getApplication(), heroId)
         _ui.update { it.copy(bans = updated) }
-    }
-
-    fun setApiBase(value: String) {
-        MetaRepository.setApiBase(getApplication(), value)
-        _ui.update { it.copy(apiBase = MetaRepository.apiBase(getApplication()), error = null) }
-        refresh()
     }
 }
