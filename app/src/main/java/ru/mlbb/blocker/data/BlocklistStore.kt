@@ -62,6 +62,28 @@ class BlocklistStore(context: Context) {
             prefs.edit().putBoolean(KEY_UNKNOWN_PORT_ALERTS, value).apply()
         }
 
+    var stableOnlyAlerts: Boolean
+        get() = prefs.getBoolean(KEY_STABLE_ONLY_ALERTS, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_STABLE_ONLY_ALERTS, value).apply()
+        }
+
+    /** Скрыть карточки конкретного сервера на сутки. */
+    fun muteServer(key: String) {
+        val raw = prefs.getString(KEY_MUTED_SERVERS, null)
+        val map = runCatching { JSONObject(raw ?: "{}") }.getOrDefault(JSONObject())
+        map.put(key, System.currentTimeMillis())
+        prefs.edit().putString(KEY_MUTED_SERVERS, map.toString()).apply()
+    }
+
+    fun isServerMuted(key: String, windowMs: Long = 24 * 60 * 60 * 1000L): Boolean {
+        val raw = prefs.getString(KEY_MUTED_SERVERS, null) ?: return false
+        val map = runCatching { JSONObject(raw) }.getOrDefault(JSONObject())
+        val mutedAt = map.optLong(key, 0L)
+        if (mutedAt <= 0L) return false
+        return System.currentTimeMillis() - mutedAt < windowMs
+    }
+
     val extraMatchPorts: Set<Int>
         get() = prefs.getStringSet(KEY_EXTRA_MATCH_PORTS, null)
             ?.mapNotNull(String::toIntOrNull)
@@ -320,6 +342,8 @@ class BlocklistStore(context: Context) {
         private const val KEY_ONBOARDING_DONE = "onboarding_done"
         private const val KEY_ALLOW_STARTUP_SERVER = "allow_startup_server"
         private const val KEY_UNKNOWN_PORT_ALERTS = "unknown_port_alerts"
+        private const val KEY_STABLE_ONLY_ALERTS = "stable_only_alerts"
+        private const val KEY_MUTED_SERVERS = "muted_servers"
         private const val KEY_EXTRA_MATCH_PORTS = "extra_match_ports"
         private const val KEY_EXTRA_SAFE_PORTS = "extra_safe_ports"
         private const val KEY_IGNORED_PORTS = "ignored_ports"

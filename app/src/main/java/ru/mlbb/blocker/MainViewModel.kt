@@ -98,6 +98,7 @@ data class UiState(
     val healthIssues: List<HealthIssue> = emptyList(),
     val rulesStatus: RulesStatus = RulesStatus(),
     val unknownPortAlerts: Boolean = true,
+    val stableOnlyAlerts: Boolean = false,
 ) {
     val isBusy: Boolean get() = status is BlockerStatus.Starting
     val isRunning: Boolean get() = status is BlockerStatus.Running
@@ -132,6 +133,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             overlayPermissionGranted = runCatching { Settings.canDrawOverlays(application) }
                 .getOrDefault(false),
             unknownPortAlerts = store.unknownPortAlerts,
+            stableOnlyAlerts = store.stableOnlyAlerts,
         ),
     )
     val ui: StateFlow<UiState> = _ui.asStateFlow()
@@ -412,6 +414,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setUnknownPortAlerts(enabled: Boolean) {
         store.unknownPortAlerts = enabled
         _ui.update { it.copy(unknownPortAlerts = enabled) }
+    }
+
+    fun setStableOnlyAlerts(enabled: Boolean) {
+        store.stableOnlyAlerts = enabled
+        _ui.update { it.copy(stableOnlyAlerts = enabled) }
     }
 
     /** Кнопка «Исправить» в баннере состояния защиты. */
@@ -711,6 +718,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 allowStartupServer = store.allowStartupServer,
                 showOnboarding = !store.onboardingDone,
                 unknownPortAlerts = store.unknownPortAlerts,
+                stableOnlyAlerts = store.stableOnlyAlerts,
             )
         }
     }

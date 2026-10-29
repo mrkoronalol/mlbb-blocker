@@ -68,6 +68,9 @@
     <string name="match_found_allowed">разрешён</string>
     <string name="match_found_blocked">заблокирован</string>
     <string name="match_notification_open">Открыть</string>
+    <string name="match_notification_block">Заблокировать</string>
+    <string name="settings_stable_alerts_title">Только стабильные соединения</string>
+    <string name="settings_stable_alerts_desc">Показывать карточку разрешённого сервера, только если подключение держится 6 секунд. Заблокированные серверы показываются всегда.</string>
     <string name="match_alert_settings_title">Карточка матча</string>
     <string name="match_alert_settings_desc">Показывать сервер и пинг поверх игры, когда MLBB подключается к матч-серверу.</string>
     <string name="match_overlay_allowed">Поверх игры: разрешено</string>

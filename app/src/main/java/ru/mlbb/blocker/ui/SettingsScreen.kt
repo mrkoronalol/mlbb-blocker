@@ -59,6 +59,7 @@ fun SettingsScreen(
     onClearLogs: () -> Unit,
     onRefreshRules: () -> Unit,
     onUnknownPortAlertsChange: (Boolean) -> Unit,
+    onStableOnlyAlertsChange: (Boolean) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -211,6 +212,24 @@ fun SettingsScreen(
                 Switch(
                     checked = ui.hideStartupAlerts,
                     onCheckedChange = onHideStartupAlertsChange,
+                )
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.settings_stable_alerts_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        stringResource(R.string.settings_stable_alerts_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = ui.stableOnlyAlerts,
+                    onCheckedChange = onStableOnlyAlertsChange,
                 )
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))

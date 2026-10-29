@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.0
+
+- Match card shows city and country, profile, and full ping (average, jitter, loss).
+- «Заблокировать» and «Не показывать» buttons on the card; block from the notification too.
+- New setting «Только стабильные соединения»: allowed servers show a card only after 6 seconds.
+- Blocked servers always show the card regardless of filters.
+- Match card decision logic moved to `MatchCardPolicy` and covered by unit tests.
+
 ## 0.14.0
 
 - VPN автоматически поднимается после обновления APK (`MY_PACKAGE_REPLACED`).

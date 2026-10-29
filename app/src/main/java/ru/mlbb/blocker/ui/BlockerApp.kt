@@ -123,6 +123,7 @@ fun BlockerApp(
     onHealthAction: () -> Unit,
     onRefreshRules: () -> Unit,
     onUnknownPortAlertsChange: (Boolean) -> Unit,
+    onStableOnlyAlertsChange: (Boolean) -> Unit,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var showAbout by rememberSaveable { mutableStateOf(false) }
@@ -257,6 +258,7 @@ fun BlockerApp(
                         onClearLogs = onClearLogs,
                         onRefreshRules = onRefreshRules,
                         onUnknownPortAlertsChange = onUnknownPortAlertsChange,
+                        onStableOnlyAlertsChange = onStableOnlyAlertsChange,
                     )
                 }
             }

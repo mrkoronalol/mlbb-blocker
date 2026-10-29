@@ -66,6 +66,11 @@
             android:exported="false" />
 
         <receiver
+            android:name=".receiver.MatchNotificationReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <receiver
             android:name=".UpdateInstallReceiver"
             android:enabled="true"
             android:exported="false" />

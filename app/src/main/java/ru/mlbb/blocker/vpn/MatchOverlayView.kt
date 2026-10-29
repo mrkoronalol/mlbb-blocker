@@ -15,7 +15,9 @@ class MatchOverlayView(
     context: Context,
     private val onClose: () -> Unit,
     private val onOpen: () -> Unit,
-    private val onAllow: () -> Unit,
+    private val onAllow: () -> Unit = {},
+    private val onBlock: () -> Unit = {},
+    private val onMute: () -> Unit = {},
 ) : FrameLayout(context) {
 
     private val titleView = TextView(context)
@@ -24,6 +26,7 @@ class MatchOverlayView(
     private val addressView = TextView(context)
     private val pingView = TextView(context)
     private val allowButton = TextView(context)
+    private val blockButton = TextView(context)
 
     init {
         setPadding(dp(12), dp(4), dp(12), dp(4))
@@ -149,21 +152,12 @@ class MatchOverlayView(
             ),
         )
 
-        val actions = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        val openButton = TextView(context).apply {
-            text = "Открыть"
-            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f)
-            setTextColor(Color.parseColor("#FF111820"))
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding(dp(12), dp(6), dp(12), dp(6))
-            background = rounded(ACCENT, 12)
-            isClickable = true
-            setOnClickListener { onOpen() }
-        }
+        val openButton = actionButton(
+            label = "Открыть",
+            textColor = Color.parseColor("#FF111820"),
+            background = rounded(ACCENT, 12),
+            onClick = onOpen,
+        )
         allowButton.apply {
             text = "Разрешить 5 мин"
             setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f)
@@ -176,19 +170,50 @@ class MatchOverlayView(
             visibility = View.GONE
             setOnClickListener { onAllow() }
         }
-        actions.addView(
-            openButton,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ),
+        blockButton.apply {
+            text = "Заблокировать"
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f)
+            setTextColor(BLOCKED)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            background = rounded(BLOCKED_BG, 12, BLOCKED)
+            isClickable = true
+            setOnClickListener { onBlock() }
+        }
+        val muteButton = actionButton(
+            label = "Не показывать",
+            textColor = SECONDARY,
+            background = rounded(MUTED_BG, 12, MUTED_STROKE),
+            onClick = onMute,
         )
-        actions.addView(
+
+        val primaryActions = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        primaryActions.addView(
+            openButton,
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+        )
+        primaryActions.addView(
             allowButton,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginStart = dp(8) },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                .apply { marginStart = dp(8) },
+        )
+
+        val secondaryActions = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        secondaryActions.addView(
+            blockButton,
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+        )
+        secondaryActions.addView(
+            muteButton,
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                .apply { marginStart = dp(8) },
         )
 
         card.addView(
@@ -206,11 +231,18 @@ class MatchOverlayView(
             ).apply { topMargin = dp(3) },
         )
         card.addView(
-            actions,
+            primaryActions,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = dp(8) },
+        )
+        card.addView(
+            secondaryActions,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(6) },
         )
 
         addView(
@@ -221,12 +253,33 @@ class MatchOverlayView(
 
     fun bind(info: MatchAlertInfo) {
         titleView.text = if (info.demo) "ПРОВЕРКА КАРТОЧКИ" else "МАТЧ НАЙДЕН"
-        cityView.text = info.city ?: "Сервер"
-        addressView.text = info.address
+        cityView.text = info.location
+        addressView.text = buildString {
+            append(info.address)
+            info.profile?.let { append(" · ").append(it) }
+        }
         statusView.text = if (info.blocked) "заблокирован" else "разрешён"
         statusView.setTextColor(if (info.blocked) BLOCKED else ALLOWED)
         pingView.text = info.pingText ?: "пинг…"
         allowButton.visibility = if (info.blocked) View.VISIBLE else View.GONE
+        blockButton.visibility = if (info.blocked) View.GONE else View.VISIBLE
+    }
+
+    private fun actionButton(
+        label: String,
+        textColor: Int,
+        background: GradientDrawable,
+        onClick: () -> Unit,
+    ): TextView = TextView(context).apply {
+        text = label
+        setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f)
+        setTextColor(textColor)
+        typeface = Typeface.DEFAULT_BOLD
+        gravity = Gravity.CENTER
+        setPadding(dp(12), dp(6), dp(12), dp(6))
+        this.background = background
+        isClickable = true
+        setOnClickListener { onClick() }
     }
 
     private fun rounded(color: Int, radiusDp: Int, strokeColor: Int? = null): GradientDrawable {
@@ -251,6 +304,8 @@ class MatchOverlayView(
         val ALLOWED: Int = Color.parseColor("#FF54D68C")
         val BLOCKED: Int = Color.parseColor("#FFFF7070")
         val BLOCKED_BG: Int = Color.parseColor("#22FF7070")
+        val MUTED_BG: Int = Color.parseColor("#14FFFFFF")
+        val MUTED_STROKE: Int = Color.parseColor("#33FFFFFF")
         val CARD_BG: Int = Color.parseColor("#F21A1F27")
         val STROKE: Int = Color.parseColor("#33FFFFFF")
     }

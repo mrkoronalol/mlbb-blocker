@@ -117,6 +117,7 @@ class MainActivity : ComponentActivity() {
                     onHealthAction = viewModel::runHealthAction,
                     onRefreshRules = viewModel::refreshRemoteRules,
                     onUnknownPortAlertsChange = viewModel::setUnknownPortAlerts,
+                    onStableOnlyAlertsChange = viewModel::setStableOnlyAlerts,
                 )
             }
         }

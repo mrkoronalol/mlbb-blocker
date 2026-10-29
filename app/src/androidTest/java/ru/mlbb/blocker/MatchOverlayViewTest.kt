@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,7 +16,53 @@ import ru.mlbb.blocker.vpn.MatchOverlayView
 class MatchOverlayViewTest {
 
     @Test
-    fun bindsCityAddressAndStatus() {
+    fun blockedCardShowsAllowButtonAndHidesBlockButton() {
+        val view = bind(
+            MatchAlertInfo(
+                ip = "154.85.91.156",
+                port = 5507,
+                network = "tcp",
+                city = "Москва",
+                country = "RU",
+                profile = "Москва",
+                blocked = true,
+                pingText = "126 мс · ±8",
+            ),
+        )
+        val texts = collectTexts(view)
+        assertTrue(texts.contains("Москва · RU"))
+        assertTrue(texts.contains("154.85.91.156:5507 · Москва"))
+        assertTrue(texts.contains("заблокирован"))
+        assertTrue(texts.contains("126 мс · ±8"))
+        assertTrue(texts.contains("Разрешить 5 мин"))
+        assertEquals(View.VISIBLE, findText(view, "Разрешить 5 мин").visibility)
+        assertEquals(View.GONE, findText(view, "Заблокировать").visibility)
+    }
+
+    @Test
+    fun allowedCardShowsBlockAndMuteButtons() {
+        val view = bind(
+            MatchAlertInfo(
+                ip = "92.223.80.65",
+                port = 10003,
+                network = "udp",
+                city = "Хабаровск",
+                profile = "ДВ",
+                blocked = false,
+                pingText = "38 мс",
+            ),
+        )
+        val texts = collectTexts(view)
+        assertTrue(texts.contains("Хабаровск"))
+        assertTrue(texts.contains("92.223.80.65:10003 · ДВ"))
+        assertTrue(texts.contains("разрешён"))
+        assertTrue(texts.contains("Заблокировать"))
+        assertTrue(texts.contains("Не показывать"))
+        assertEquals(View.GONE, findText(view, "Разрешить 5 мин").visibility)
+        assertEquals(View.VISIBLE, findText(view, "Заблокировать").visibility)
+    }
+
+    private fun bind(info: MatchAlertInfo): MatchOverlayView {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         var view: MatchOverlayView? = null
         instrumentation.runOnMainSync {
@@ -24,27 +71,22 @@ class MatchOverlayViewTest {
                 onClose = {},
                 onOpen = {},
                 onAllow = {},
-            ).apply {
-                bind(
-                    MatchAlertInfo(
-                        ip = "154.85.91.153",
-                        port = 10003,
-                        network = "tcp",
-                        city = "Москва",
-                        profile = "Москва",
-                        blocked = false,
-                        pingText = "126 мс",
-                    ),
-                )
+                onBlock = {},
+                onMute = {},
+            ).apply { bind(info) }
+        }
+        return view!!
+    }
+
+    private fun findText(view: View, text: String): TextView {
+        if (view is TextView && view.text.toString() == text) return view
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                val match = runCatching { findText(view.getChildAt(index), text) }.getOrNull()
+                if (match != null) return match
             }
         }
-
-        val texts = collectTexts(view!!)
-        assertTrue(texts.any { it == "МАТЧ НАЙДЕН" })
-        assertTrue(texts.any { it == "Москва" })
-        assertTrue(texts.any { it == "154.85.91.153:10003" })
-        assertTrue(texts.any { it == "разрешён" })
-        assertTrue(texts.any { it == "126 мс" })
+        throw AssertionError("Не найден TextView с текстом '$text'")
     }
 
     private fun collectTexts(view: View): List<String> {
