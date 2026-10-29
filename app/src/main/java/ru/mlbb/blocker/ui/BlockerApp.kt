@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,6 +42,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -67,6 +69,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ru.mlbb.blocker.BuildConfig
 import ru.mlbb.blocker.R
 import ru.mlbb.blocker.UiState
@@ -168,7 +171,10 @@ fun BlockerApp(
         },
         bottomBar = {
             if (!showAbout) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                NavigationBar(
+                    containerColor = AppColors.Surface,
+                    tonalElevation = 0.dp,
+                ) {
                     NavigationItem(0, tab, "Главная", Icons.Default.Home) {
                         showAbout = false
                         tab = it
@@ -181,11 +187,15 @@ fun BlockerApp(
                         showAbout = false
                         tab = it
                     }
-                    NavigationItem(3, tab, "Блоклист", Icons.Default.Lock) {
+                    NavigationItem(3, tab, "Блок", Icons.Default.Lock) {
                         showAbout = false
                         tab = it
                     }
-                    NavigationItem(4, tab, "Настройки", Icons.Default.Settings) {
+                    NavigationItem(4, tab, "Мета", Icons.Default.Star) {
+                        showAbout = false
+                        tab = it
+                    }
+                    NavigationItem(5, tab, "Настройки", Icons.Default.Settings) {
                         showAbout = false
                         tab = it
                     }
@@ -240,6 +250,7 @@ fun BlockerApp(
                         onClearRules = onClearRules,
                         onShowMessage = onShowMessage,
                     )
+                    4 -> MetaScreen()
                     else -> SettingsScreen(
                         ui = ui,
                         onDiscoveryChange = onDiscoveryChange,
@@ -278,7 +289,21 @@ private fun RowScope.NavigationItem(
         selected = selected == index,
         onClick = { onClick(index) },
         icon = { Icon(icon, contentDescription = label) },
-        label = { Text(label) },
+        label = {
+            Text(
+                label,
+                maxLines = 1,
+                softWrap = false,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+            )
+        },
+        colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = AppColors.BlueLight,
+            selectedTextColor = AppColors.BlueLight,
+            indicatorColor = AppColors.Blue.copy(alpha = 0.18f),
+            unselectedIconColor = AppColors.TextMuted,
+            unselectedTextColor = AppColors.TextMuted,
+        ),
     )
 }
 
@@ -349,7 +374,7 @@ private fun HomeScreen(
             OnboardingCard(onDone = onFinishOnboarding)
         }
 
-        Card(
+        EsportsCard(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
             ),
@@ -488,7 +513,7 @@ private fun HomeScreen(
             StatCard("Собрано IP", ui.connections.size.toString(), Modifier.weight(1f))
         }
 
-        Card(
+        EsportsCard(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface,
             ),
@@ -546,7 +571,7 @@ private fun HealthBanner(issue: HealthIssue, onFix: () -> Unit) {
         HealthIssue.GEOIP_FAILED -> stringResource(R.string.health_geoip_failed_text)
         HealthIssue.RULES_FALLBACK -> stringResource(R.string.health_rules_failed_text)
     }
-    Card(
+    EsportsCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f),
         ),
@@ -586,7 +611,7 @@ private fun HealthBanner(issue: HealthIssue, onFix: () -> Unit) {
 
 @Composable
 private fun OnboardingCard(onDone: () -> Unit) {
-    Card(
+    EsportsCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
         ),
@@ -624,7 +649,7 @@ private fun UpdateBanner(
     onInstall: () -> Unit,
 ) {
     val context = LocalContext.current
-    Card(
+    EsportsCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
         ),
@@ -733,7 +758,7 @@ internal fun ProfileCard(
     onClick: () -> Unit,
 ) {
     val accent = profileAccent(profile)
-    Card(
+    EsportsCard(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) accent.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surface,
@@ -830,7 +855,7 @@ private fun ToggleRow(
 
 @Composable
 private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(
+    EsportsCard(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
@@ -857,7 +882,7 @@ fun NoticeCard(
     title: String,
     text: String,
 ) {
-    Card(
+    EsportsCard(
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.10f)),
     ) {
         Row(

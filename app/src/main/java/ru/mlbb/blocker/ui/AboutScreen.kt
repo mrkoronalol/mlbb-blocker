@@ -58,6 +58,14 @@ fun AboutScreen() {
             FeatureRow("Сбор серверов за 60 секунд и экспорт списка IP")
         }
 
+        AboutCard("Что нового в 0.16.0") {
+            BulletRow("Новый тёмный дизайн в стиле сайта MLBB Meta: navy-фон, стеклянные карточки, синие акценты")
+            BulletRow("Шесть разделов: Главная, Матч, Монитор, Блок, Мета, Настройки")
+            BulletRow("Вкладка «Мета»: тиры S–D, группировка по линиям, статистика героя в шторке")
+            BulletRow("Данные меты приходят с сайта и кэшируются в Room — работают без интернета")
+            BulletRow("Регион меты (Мир / Москва / ДВ) и бан-лист контрпиков")
+        }
+
         AboutCard("Что нового в 0.15.0") {
             BulletRow("В карточке матча — город и страна, профиль и полный пинг: среднее, джиттер, потери")
             BulletRow("Кнопки «Заблокировать» и «Не показывать» прямо в карточке")
@@ -190,7 +198,7 @@ fun AboutScreen() {
 
 @Composable
 private fun HeroCard() {
-    Card(
+    EsportsCard(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         shape = RoundedCornerShape(24.dp),
     ) {
@@ -272,7 +280,7 @@ private fun MiniStat(value: String, label: String, modifier: Modifier = Modifier
 
 @Composable
 private fun AboutCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(
+    EsportsCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(20.dp),
     ) {

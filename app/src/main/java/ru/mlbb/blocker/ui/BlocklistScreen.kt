@@ -201,7 +201,7 @@ fun BlocklistScreen(
 
 @Composable
 private fun PresetCard(onAddPreset: (BlockPreset) -> Unit) {
-    Card(
+    EsportsCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
         ),
@@ -251,7 +251,7 @@ private fun RuleCard(
     onRemove: () -> Unit,
     onEnabledChange: (Boolean) -> Unit,
 ) {
-    Card(
+    EsportsCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Row(

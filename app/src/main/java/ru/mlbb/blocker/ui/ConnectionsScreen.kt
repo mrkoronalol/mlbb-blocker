@@ -210,7 +210,7 @@ fun ConnectionsScreen(
         }
 
         if (best != null) {
-            Card(
+            EsportsCard(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
                 ),
@@ -324,7 +324,7 @@ private fun ConnectionCard(
     onBlock: (ConnectionStat, Boolean) -> Unit,
 ) {
     val known = KnownServers.lookup(connection.ip)
-    Card(
+    EsportsCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(

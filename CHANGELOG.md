@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.16.0
+
+- Redesigned UI to match the mlbb-meta site: navy `#0B0F19`, cards `#14182A` with `#2A3756` borders, blue/cyan accents.
+- Six bottom tabs: Home, Match, Monitor, Blocklist, Meta, Settings.
+- New Meta tab: S/A/B/C/D tiers, heroes grouped by lane, hero sheet with win/pick/ban rates.
+- Meta data comes from the site (`GET /api/v1/app/meta`) and is cached in Room for offline use.
+- Region selector (World / Moscow / Far East) and a local counterpick ban list.
+- API base URL is configurable in the app; default is the `https://your-domain.com` stub.
+
 ## 0.15.0
 
 - Match card shows city and country, profile, and full ping (average, jitter, loss).

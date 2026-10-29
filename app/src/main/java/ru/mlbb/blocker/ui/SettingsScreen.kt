@@ -552,7 +552,7 @@ private fun copyDiagnostics(context: Context, ui: UiState) {
 
 @Composable
 private fun SettingsCard(content: @Composable () -> Unit) {
-    Card(
+    EsportsCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth(),
     ) {

@@ -20,10 +20,15 @@ android {
         applicationId = "ru.mlbb.blocker"
         minSdk = 24
         targetSdk = 35
-        versionCode = 23
-        versionName = "0.15.0"
+        versionCode = 24
+        versionName = "0.16.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val metaApiBase = (project.findProperty("metaApiBase") as String?)
+            ?: System.getenv("META_API_BASE")
+            ?: "https://your-domain.com"
+        buildConfigField("String", "META_API_BASE", "\"$metaApiBase\"")
     }
 
     signingConfigs {
@@ -126,6 +131,7 @@ dependencies {
     ksp("androidx.room:room-compiler:2.7.2")
 
     implementation("com.maxmind.db:maxmind-db:3.1.1")
+    implementation("io.coil-kt:coil-compose:2.7.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
