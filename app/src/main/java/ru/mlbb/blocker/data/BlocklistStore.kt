@@ -56,6 +56,72 @@ class BlocklistStore(context: Context) {
             prefs.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply()
         }
 
+    var unknownPortAlerts: Boolean
+        get() = prefs.getBoolean(KEY_UNKNOWN_PORT_ALERTS, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_UNKNOWN_PORT_ALERTS, value).apply()
+        }
+
+    val extraMatchPorts: Set<Int>
+        get() = prefs.getStringSet(KEY_EXTRA_MATCH_PORTS, null)
+            ?.mapNotNull(String::toIntOrNull)
+            ?.toSet()
+            ?: emptySet()
+
+    val extraSafePorts: Set<Int>
+        get() = prefs.getStringSet(KEY_EXTRA_SAFE_PORTS, null)
+            ?.mapNotNull(String::toIntOrNull)
+            ?.toSet()
+            ?: emptySet()
+
+    val ignoredPorts: Set<Int>
+        get() = prefs.getStringSet(KEY_IGNORED_PORTS, null)
+            ?.mapNotNull(String::toIntOrNull)
+            ?.toSet()
+            ?: emptySet()
+
+    fun addExtraMatchPort(port: Int) {
+        updatePortSet(KEY_EXTRA_MATCH_PORTS, port, add = true)
+        updatePortSet(KEY_EXTRA_SAFE_PORTS, port, add = false)
+        updatePortSet(KEY_IGNORED_PORTS, port, add = false)
+    }
+
+    fun addExtraSafePort(port: Int) {
+        updatePortSet(KEY_EXTRA_SAFE_PORTS, port, add = true)
+        updatePortSet(KEY_EXTRA_MATCH_PORTS, port, add = false)
+        updatePortSet(KEY_IGNORED_PORTS, port, add = false)
+    }
+
+    fun ignorePort(port: Int) {
+        updatePortSet(KEY_IGNORED_PORTS, port, add = true)
+        updatePortSet(KEY_EXTRA_MATCH_PORTS, port, add = false)
+        updatePortSet(KEY_EXTRA_SAFE_PORTS, port, add = false)
+    }
+
+    /** Порт уже показывали пользователю недавно (по умолчанию — в течение суток). */
+    fun shouldAnnounceUnknownPort(port: Int, windowMs: Long = 24 * 60 * 60 * 1000L): Boolean {
+        val now = System.currentTimeMillis()
+        val raw = prefs.getString(KEY_UNKNOWN_PORT_SEEN, null)
+        val seen = runCatching { JSONObject(raw ?: "{}") }.getOrDefault(JSONObject())
+        val last = seen.optLong(port.toString(), 0L)
+        if (now - last < windowMs) return false
+        seen.put(port.toString(), now)
+        val keys = seen.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            if (now - seen.optLong(key, 0L) > 7 * 24 * 60 * 60 * 1000L) keys.remove()
+        }
+        prefs.edit().putString(KEY_UNKNOWN_PORT_SEEN, seen.toString()).apply()
+        return true
+    }
+
+    private fun updatePortSet(key: String, port: Int, add: Boolean) {
+        val current = prefs.getStringSet(key, null)?.toMutableSet() ?: mutableSetOf()
+        val value = port.toString()
+        if (add) current.add(value) else current.remove(value)
+        prefs.edit().putStringSet(key, current).apply()
+    }
+
     var lastRunning: Boolean
         get() = prefs.getBoolean(KEY_LAST_RUNNING, false)
         set(value) {
@@ -253,6 +319,11 @@ class BlocklistStore(context: Context) {
         private const val KEY_LAST_RUNNING = "last_running"
         private const val KEY_ONBOARDING_DONE = "onboarding_done"
         private const val KEY_ALLOW_STARTUP_SERVER = "allow_startup_server"
+        private const val KEY_UNKNOWN_PORT_ALERTS = "unknown_port_alerts"
+        private const val KEY_EXTRA_MATCH_PORTS = "extra_match_ports"
+        private const val KEY_EXTRA_SAFE_PORTS = "extra_safe_ports"
+        private const val KEY_IGNORED_PORTS = "ignored_ports"
+        private const val KEY_UNKNOWN_PORT_SEEN = "unknown_port_seen"
         private const val KEY_STABILIZATION_LEGACY = "ping_stabilization"
     }
 }

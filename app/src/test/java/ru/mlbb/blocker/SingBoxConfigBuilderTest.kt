@@ -183,7 +183,9 @@ class SingBoxConfigBuilderTest {
         }
         assertTrue(probeIndex >= 0)
         assertTrue(blockIndex > probeIndex)
-        assertEquals(30190, rules.getJSONObject(probeIndex).getJSONArray("port").getInt(0))
+        val safePorts = rules.getJSONObject(probeIndex).getJSONArray("port")
+        val values = (0 until safePorts.length()).map { safePorts.getInt(it) }
+        assertTrue(30190 in values)
     }
 
     @Test

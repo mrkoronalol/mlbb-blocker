@@ -31,6 +31,8 @@ import ru.mlbb.blocker.data.AllowRule
 import ru.mlbb.blocker.data.Cidr
 import ru.mlbb.blocker.data.ConnectionStat
 import ru.mlbb.blocker.data.GamePorts
+import ru.mlbb.blocker.data.HealthIssue
+import ru.mlbb.blocker.data.BlockerHealth
 import ru.mlbb.blocker.data.InstallResult
 import ru.mlbb.blocker.data.MlbbPackageInfo
 import ru.mlbb.blocker.data.db.BlockedAttemptEntity
@@ -50,6 +52,10 @@ import ru.mlbb.blocker.data.backup.BackupCodec
 import ru.mlbb.blocker.data.backup.BackupData
 import ru.mlbb.blocker.data.backup.BackupRepository
 import ru.mlbb.blocker.data.backup.BackupSummary
+import ru.mlbb.blocker.data.rules.RuleConfigRepository
+import ru.mlbb.blocker.data.rules.RulesRefreshResult
+import ru.mlbb.blocker.data.rules.RulesSource
+import ru.mlbb.blocker.data.rules.RulesStatus
 import ru.mlbb.blocker.vpn.BlockerController
 import ru.mlbb.blocker.vpn.MatchAlertManager
 
@@ -89,6 +95,9 @@ data class UiState(
     val updateInstalling: Boolean = false,
     val pendingImport: BackupSummary? = null,
     val backupBusy: Boolean = false,
+    val healthIssues: List<HealthIssue> = emptyList(),
+    val rulesStatus: RulesStatus = RulesStatus(),
+    val unknownPortAlerts: Boolean = true,
 ) {
     val isBusy: Boolean get() = status is BlockerStatus.Starting
     val isRunning: Boolean get() = status is BlockerStatus.Running
@@ -122,6 +131,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             showOnboarding = !store.onboardingDone,
             overlayPermissionGranted = runCatching { Settings.canDrawOverlays(application) }
                 .getOrDefault(false),
+            unknownPortAlerts = store.unknownPortAlerts,
         ),
     )
     val ui: StateFlow<UiState> = _ui.asStateFlow()
@@ -130,6 +140,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             BlockerRepository.status.collect { status ->
                 _ui.update { it.copy(status = status) }
+                refreshHealth()
             }
         }
         viewModelScope.launch {
@@ -156,6 +167,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _ui.update { it.copy(blockedAttempts = attempts) }
             }
         }
+        viewModelScope.launch {
+            RuleConfigRepository.status.collect { status ->
+                _ui.update { it.copy(rulesStatus = status) }
+            }
+        }
         var geoEnriched = false
         viewModelScope.launch {
             GeoIpRepository.status.collect { status ->
@@ -172,6 +188,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         checkForUpdates()
+        refreshHealth()
     }
 
     fun checkForUpdates() {
@@ -364,6 +381,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 showMessage("Не удалось загрузить GeoIP базу")
             }
+        }
+    }
+
+    fun refreshRemoteRules() {
+        if (_ui.value.rulesStatus.checking) return
+        viewModelScope.launch {
+            val context = getApplication<Application>()
+            val result = RuleConfigRepository.refresh(context)
+            val message = when (result) {
+                is RulesRefreshResult.Updated ->
+                    context.getString(R.string.rules_updated, result.updatedAt)
+
+                RulesRefreshResult.UpToDate -> context.getString(R.string.rules_up_to_date)
+                is RulesRefreshResult.Rejected ->
+                    context.getString(R.string.rules_rejected, result.reason)
+
+                is RulesRefreshResult.NetworkError ->
+                    context.getString(R.string.rules_network_error, result.reason)
+            }
+            showMessage(message)
+            if (result is RulesRefreshResult.Updated) {
+                refreshRules()
+                reloadIfRunning()
+            }
+            refreshHealth()
+        }
+    }
+
+    fun setUnknownPortAlerts(enabled: Boolean) {
+        store.unknownPortAlerts = enabled
+        _ui.update { it.copy(unknownPortAlerts = enabled) }
+    }
+
+    /** Кнопка «Исправить» в баннере состояния защиты. */
+    fun runHealthAction() {
+        val issue = _ui.value.healthIssues.firstOrNull() ?: return
+        when (BlockerHealth.recoveryAction(issue)) {
+            BlockerHealth.RecoveryAction.START_VPN -> startVpn()
+            BlockerHealth.RecoveryAction.RELOAD_GEOIP -> downloadGeoIp()
+            BlockerHealth.RecoveryAction.REFRESH_RULES -> refreshRemoteRules()
+        }
+    }
+
+    fun refreshHealth() {
+        val context = getApplication<Application>()
+        viewModelScope.launch(Dispatchers.IO) {
+            val snapshot = BlockerHealth.inspect(
+                context,
+                expectedRunning = BlockerHealth.isExpectedRunning(context),
+                running = BlockerRepository.status.value is BlockerStatus.Running,
+            )
+            val issues = BlockerHealth.issues(snapshot)
+            _ui.update { it.copy(healthIssues = issues) }
         }
     }
 
@@ -640,6 +710,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 autoStart = store.autoStart,
                 allowStartupServer = store.allowStartupServer,
                 showOnboarding = !store.onboardingDone,
+                unknownPortAlerts = store.unknownPortAlerts,
             )
         }
     }

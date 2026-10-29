@@ -27,8 +27,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.mlbb.blocker.BuildConfig
+import ru.mlbb.blocker.R
 import ru.mlbb.blocker.UiState
 import ru.mlbb.blocker.data.geo.GeoIpStatus
+import ru.mlbb.blocker.data.rules.RulesSource
+import androidx.compose.ui.res.stringResource
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -54,6 +57,8 @@ fun SettingsScreen(
     onApplyImport: (Boolean) -> Unit,
     onCancelImport: () -> Unit,
     onClearLogs: () -> Unit,
+    onRefreshRules: () -> Unit,
+    onUnknownPortAlertsChange: (Boolean) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -86,6 +91,47 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+
+        SettingsCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Правила с сервера", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        stringResource(R.string.rules_settings_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Text(
+                stringResource(
+                    R.string.rules_status_line,
+                    rulesSourceLabel(ui.rulesStatus.source),
+                    ui.rulesStatus.updatedAt,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ui.rulesStatus.lastError?.let { error ->
+                Text(
+                    "Ошибка: $error",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            Button(
+                onClick = onRefreshRules,
+                enabled = !ui.rulesStatus.checking,
+            ) {
+                Text(
+                    if (ui.rulesStatus.checking) {
+                        stringResource(R.string.rules_checking)
+                    } else {
+                        stringResource(R.string.rules_check_now)
+                    },
+                )
+            }
         }
 
         SettingsCard {
@@ -192,6 +238,26 @@ fun SettingsScreen(
                 Switch(
                     checked = ui.allowStartupServer,
                     onCheckedChange = onAllowStartupServerChange,
+                )
+            }
+        }
+
+        SettingsCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.settings_unknown_ports_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        stringResource(R.string.settings_unknown_ports_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = ui.unknownPortAlerts,
+                    onCheckedChange = onUnknownPortAlertsChange,
                 )
             }
         }
@@ -424,6 +490,13 @@ private fun DiagnosticsCard(ui: UiState, onRefresh: () -> Unit) {
             Text("Скопировать диагностику")
         }
     }
+}
+
+private fun rulesSourceLabel(source: RulesSource): String = when (source) {
+    RulesSource.BUILT_IN -> "встроенные"
+    RulesSource.ASSET -> "из APK"
+    RulesSource.CACHED -> "сохранённые"
+    RulesSource.REMOTE -> "с GitHub"
 }
 
 private fun openOverlaySettings(context: Context) {

@@ -73,6 +73,7 @@ import ru.mlbb.blocker.UiState
 import ru.mlbb.blocker.data.BlockPreset
 import ru.mlbb.blocker.data.BlockerStatus
 import ru.mlbb.blocker.data.ConnectionStat
+import ru.mlbb.blocker.data.HealthIssue
 import ru.mlbb.blocker.data.RegionProfile
 import ru.mlbb.blocker.data.RegionProfiles
 import ru.mlbb.blocker.data.UpdateDownloadState
@@ -119,6 +120,9 @@ fun BlockerApp(
     onRemoveAllow: (String) -> Unit,
     onMessageShown: () -> Unit,
     onShowMessage: (String) -> Unit,
+    onHealthAction: () -> Unit,
+    onRefreshRules: () -> Unit,
+    onUnknownPortAlertsChange: (Boolean) -> Unit,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var showAbout by rememberSaveable { mutableStateOf(false) }
@@ -202,6 +206,7 @@ fun BlockerApp(
                         onDownloadUpdate = onDownloadUpdate,
                         onInstallUpdate = onInstallUpdate,
                         onOpenAbout = { showAbout = true },
+                        onHealthAction = onHealthAction,
                     )
                     1 -> MatchScreen(
                         ui = ui,
@@ -250,6 +255,8 @@ fun BlockerApp(
                         onApplyImport = onApplyImport,
                         onCancelImport = onCancelImport,
                         onClearLogs = onClearLogs,
+                        onRefreshRules = onRefreshRules,
+                        onUnknownPortAlertsChange = onUnknownPortAlertsChange,
                     )
                 }
             }
@@ -283,6 +290,7 @@ private fun HomeScreen(
     onDownloadUpdate: () -> Unit,
     onInstallUpdate: () -> Unit,
     onOpenAbout: () -> Unit,
+    onHealthAction: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -329,6 +337,10 @@ private fun HomeScreen(
                 onDownload = onDownloadUpdate,
                 onInstall = onInstallUpdate,
             )
+        }
+
+        ui.healthIssues.firstOrNull()?.let { issue ->
+            HealthBanner(issue = issue, onFix = onHealthAction)
         }
 
         if (ui.showOnboarding) {
@@ -516,6 +528,56 @@ private fun HomeScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("О приложении и возможностях")
+        }
+    }
+}
+
+@Composable
+private fun HealthBanner(issue: HealthIssue, onFix: () -> Unit) {
+    val title = when (issue) {
+        HealthIssue.SERVICE_STOPPED -> stringResource(R.string.health_service_stopped_title)
+        HealthIssue.GEOIP_FAILED -> stringResource(R.string.health_geoip_failed_title)
+        HealthIssue.RULES_FALLBACK -> stringResource(R.string.health_rules_failed_title)
+    }
+    val text = when (issue) {
+        HealthIssue.SERVICE_STOPPED -> stringResource(R.string.health_service_stopped_text)
+        HealthIssue.GEOIP_FAILED -> stringResource(R.string.health_geoip_failed_text)
+        HealthIssue.RULES_FALLBACK -> stringResource(R.string.health_rules_failed_text)
+    }
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f),
+        ),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            Text(
+                text,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = onFix) {
+                Text(stringResource(R.string.health_fix))
+            }
         }
     }
 }

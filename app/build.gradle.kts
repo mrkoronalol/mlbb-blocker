@@ -1,3 +1,8 @@
+import java.io.File
+import java.security.KeyStore
+import java.security.PrivateKey
+import java.security.Signature
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -15,8 +20,8 @@ android {
         applicationId = "ru.mlbb.blocker"
         minSdk = 24
         targetSdk = 35
-        versionCode = 21
-        versionName = "0.13.3"
+        versionCode = 22
+        versionName = "0.14.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -136,3 +141,57 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 }
 
+
+// Подпись rules.json тем же ключом, что и APK. Результат публикуется в GitHub-релизе
+// как rules.json и rules.json.sig; приложение проверяет подпись сертификатом APK.
+val signRules by tasks.registering {
+    group = "distribution"
+    description = "Signs rules.json with the release key for publishing as release assets."
+
+    val sourceFile = layout.projectDirectory.file("src/main/assets/rules/rules.json")
+    val outputDir = layout.buildDirectory.dir("outputs/rules")
+    inputs.file(sourceFile).withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(outputDir)
+
+    doLast {
+        val propsFile = rootProject.file("keystore.properties")
+        val props = Properties().apply {
+            if (propsFile.exists()) propsFile.inputStream().use { load(it) }
+        }
+        val storePath = props.getProperty("storeFile") ?: System.getenv("RELEASE_KEYSTORE_PATH")
+        val storePassword = props.getProperty("storePassword") ?: System.getenv("RELEASE_STORE_PASSWORD")
+        val keyAlias = props.getProperty("keyAlias") ?: System.getenv("RELEASE_KEY_ALIAS")
+        val keyPassword = props.getProperty("keyPassword") ?: System.getenv("RELEASE_KEY_PASSWORD")
+
+        if (storePath.isNullOrBlank() || storePassword.isNullOrBlank() ||
+            keyAlias.isNullOrBlank() || keyPassword.isNullOrBlank()
+        ) {
+            throw GradleException("Release keystore is not configured: set keystore.properties or RELEASE_* env vars")
+        }
+
+        val storeFile = rootProject.file(storePath)
+        if (!storeFile.exists()) throw GradleException("Keystore not found: ${storeFile.absolutePath}")
+
+        val keyStore = KeyStore.getInstance(storeFile, storePassword.toCharArray())
+        val privateKey = keyStore.getKey(keyAlias, keyPassword.toCharArray()) as? PrivateKey
+            ?: throw GradleException("Alias '$keyAlias' is not a private key")
+        val algorithm = when (privateKey.algorithm.uppercase()) {
+            "EC", "ECDSA" -> "SHA256withECDSA"
+            else -> "SHA256withRSA"
+        }
+
+        val content = sourceFile.asFile.readBytes()
+        val signature = Signature.getInstance(algorithm).run {
+            initSign(privateKey)
+            update(content)
+            sign()
+        }
+        val encoded = Base64.getEncoder().encodeToString(signature)
+
+        val target = outputDir.get().asFile
+        target.mkdirs()
+        File(target, "rules.json").writeBytes(content)
+        File(target, "rules.json.sig").writeText(encoded + "\n")
+        logger.lifecycle("Signed rules.json with $algorithm, signature ${encoded.length} chars")
+    }
+}

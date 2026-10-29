@@ -14,6 +14,8 @@ import ru.mlbb.blocker.data.UpdateWorker
 import ru.mlbb.blocker.data.db.MonitorRepository
 import ru.mlbb.blocker.data.geo.GeoIpRepository
 import ru.mlbb.blocker.data.RegionProfiles
+import ru.mlbb.blocker.data.rules.RuleConfigRepository
+import ru.mlbb.blocker.data.rules.RulesRefreshWorker
 import java.util.concurrent.TimeUnit
 
 class MlbbBlockerApp : Application() {
@@ -23,6 +25,7 @@ class MlbbBlockerApp : Application() {
         instance = this
         MonitorRepository.initialize(this)
         GeoIpRepository.initialize(this)
+        RuleConfigRepository.initialize(this)
         seedFirstRun()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)
@@ -58,8 +61,38 @@ class MlbbBlockerApp : Application() {
                     NotificationManager.IMPORTANCE_DEFAULT,
                 ),
             )
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    CHANNEL_STATUS,
+                    getString(R.string.notification_channel_status),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ).apply {
+                    setShowBadge(true)
+                },
+            )
         }
         scheduleUpdateChecks()
+        scheduleRulesRefresh()
+    }
+
+    private fun scheduleRulesRefresh() {
+        val request = PeriodicWorkRequestBuilder<RulesRefreshWorker>(24, TimeUnit.HOURS)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build(),
+            )
+            .setBackoffCriteria(
+                androidx.work.BackoffPolicy.EXPONENTIAL,
+                30,
+                TimeUnit.MINUTES,
+            )
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "mlbb-rules-refresh",
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
     }
 
     private fun scheduleUpdateChecks() {
@@ -93,6 +126,7 @@ class MlbbBlockerApp : Application() {
         const val CHANNEL_BLOCKED = "mlbb_blocker_blocked"
         const val CHANNEL_MATCH = "mlbb_blocker_match"
         const val CHANNEL_UPDATE = "mlbb_blocker_update"
+        const val CHANNEL_STATUS = "mlbb_blocker_status"
 
         lateinit var instance: MlbbBlockerApp
             private set

@@ -1,35 +1,58 @@
 package ru.mlbb.blocker.data
 
+import ru.mlbb.blocker.data.rules.RuleConfigRepository
+import ru.mlbb.blocker.data.rules.RulesConfig
+
 object GamePorts {
-    const val MATCH_PORT = 10003
 
-    val MATCH_PORT_RANGES: List<String> = listOf(
-        "5000:5058",
-        "5500:5599",
-        "10011:10013",
-        "10063:10063",
-    )
+    /** Основной матч-порт MLBB (по умолчанию 10003). */
+    val MATCH_PORT: Int
+        get() = RuleConfigRepository.current.mainPort
 
-    val MATCH_PORTS: Set<Int> = buildSet {
-        add(MATCH_PORT)
-        addAll(5000..5058)
-        addAll(5500..5599)
-        addAll(10011..10013)
-        add(10063)
-    }
+    /** Диапазоны в синтаксисе sing-box: "5000:5058". */
+    val MATCH_PORT_RANGES: List<String>
+        get() = RuleConfigRepository.current.matchPortRanges
 
-    val SAFE_PORTS: Set<Int> = setOf(30021, 30071, 30190, 30220)
-    val SAFE_PORT_LIST: List<Int> = listOf(30190, 30021, 30071, 30220)
+    val MATCH_PORTS: Set<Int>
+        get() = (matchPortSet() + PortOverrides.matchPorts) - safePortSet()
+
+    /** Отдельные порты (не покрытые диапазонами) для правил sing-box. */
+    val MATCH_PORT_LIST: List<Int>
+        get() {
+            val covered = rangePorts()
+            return (matchPortSet() + PortOverrides.matchPorts)
+                .filterNot { it in covered }
+                .minus(safePortSet())
+                .sorted()
+        }
+
+    val SAFE_PORTS: Set<Int>
+        get() = safePortSet()
+
+    val SAFE_PORT_LIST: List<Int>
+        get() = safePortSet().sorted()
 
     fun isGamePort(port: Int): Boolean {
         return port == 30190 || isMatchPort(port)
     }
 
     fun isMatchPort(port: Int): Boolean {
-        return port in MATCH_PORTS
+        if (port in safePortSet()) return false
+        return port in matchPortSet() || port in PortOverrides.matchPorts
     }
 
     fun isSafePort(port: Int): Boolean {
-        return port in SAFE_PORTS
+        return port in safePortSet()
+    }
+
+    private fun matchPortSet(): Set<Int> = RuleConfigRepository.current.matchPortSet
+
+    private fun safePortSet(): Set<Int> =
+        RuleConfigRepository.current.safePortSet + PortOverrides.safePorts
+
+    private fun rangePorts(): Set<Int> = RuleConfigRepository.current.let { config ->
+        buildSet {
+            config.matchPortRanges.forEach { range -> addAll(RulesConfig.expandRange(range)) }
+        }
     }
 }

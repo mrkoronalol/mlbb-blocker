@@ -1,12 +1,21 @@
 package ru.mlbb.blocker.data
 
-object StartupEndpoints {
-    const val MAIN_IP = "154.85.91.151"
-    const val MAIN_PORT = 10003
+import ru.mlbb.blocker.data.rules.RuleConfigRepository
 
-    val CIDRS = listOf("$MAIN_IP/32")
+object StartupEndpoints {
+
+    val MAIN_IP: String
+        get() = RuleConfigRepository.current.startup.firstOrNull()?.ip
+            ?: ru.mlbb.blocker.data.rules.BuiltInRules.config.startup.first().ip
+
+    val MAIN_PORT: Int
+        get() = RuleConfigRepository.current.startup.firstOrNull()?.port
+            ?: ru.mlbb.blocker.data.rules.BuiltInRules.config.startup.first().port
+
+    val CIDRS: List<String>
+        get() = RuleConfigRepository.current.startup.map { it.cidr }
 
     fun isMainConnection(ip: String, port: Int): Boolean {
-        return ip == MAIN_IP && port == MAIN_PORT
+        return RuleConfigRepository.current.startup.any { it.ip == ip && it.port == port }
     }
 }

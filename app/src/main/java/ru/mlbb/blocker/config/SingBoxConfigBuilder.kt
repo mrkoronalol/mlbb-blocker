@@ -109,34 +109,46 @@ object SingBoxConfigBuilder {
             )
         }
         if (!discoveryMode && profileRules.isNotEmpty()) {
-            routeRules.put(
-                JSONObject()
-                    .put("ip_cidr", JSONArray(profileRules))
-                    .put("port", JSONArray().put(GamePorts.MATCH_PORT))
-                    .put("action", "route")
-                    .put("outbound", "sink"),
-            )
-            routeRules.put(
-                JSONObject()
-                    .put("ip_cidr", JSONArray(profileRules))
-                    .put("port_range", JSONArray(GamePorts.MATCH_PORT_RANGES))
-                    .put("action", "route")
-                    .put("outbound", "sink"),
-            )
+            val rangePorts = GamePorts.MATCH_PORT_RANGES
+            val singlePorts = GamePorts.MATCH_PORT_LIST
+            if (singlePorts.isNotEmpty()) {
+                routeRules.put(
+                    JSONObject()
+                        .put("ip_cidr", JSONArray(profileRules))
+                        .put("port", JSONArray(singlePorts))
+                        .put("action", "route")
+                        .put("outbound", "sink"),
+                )
+            }
+            if (rangePorts.isNotEmpty()) {
+                routeRules.put(
+                    JSONObject()
+                        .put("ip_cidr", JSONArray(profileRules))
+                        .put("port_range", JSONArray(rangePorts))
+                        .put("action", "route")
+                        .put("outbound", "sink"),
+                )
+            }
         }
         if (!discoveryMode && blockMatchPorts) {
-            routeRules.put(
-                JSONObject()
-                    .put("port", JSONArray().put(GamePorts.MATCH_PORT))
-                    .put("action", "route")
-                    .put("outbound", "sink"),
-            )
-            routeRules.put(
-                JSONObject()
-                    .put("port_range", JSONArray(GamePorts.MATCH_PORT_RANGES))
-                    .put("action", "route")
-                    .put("outbound", "sink"),
-            )
+            val rangePorts = GamePorts.MATCH_PORT_RANGES
+            val singlePorts = GamePorts.MATCH_PORT_LIST
+            if (singlePorts.isNotEmpty()) {
+                routeRules.put(
+                    JSONObject()
+                        .put("port", JSONArray(singlePorts))
+                        .put("action", "route")
+                        .put("outbound", "sink"),
+                )
+            }
+            if (rangePorts.isNotEmpty()) {
+                routeRules.put(
+                    JSONObject()
+                        .put("port_range", JSONArray(rangePorts))
+                        .put("action", "route")
+                        .put("outbound", "sink"),
+                )
+            }
         }
 
         root.put(

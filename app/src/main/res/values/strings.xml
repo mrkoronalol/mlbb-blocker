@@ -86,4 +86,43 @@
     <string name="update_available_text">Скачайте свежий APK с GitHub. Текущая версия: %1$s.</string>
     <string name="update_download">Скачать APK</string>
     <string name="update_release_page">Релиз на GitHub</string>
+
+    <string name="notification_channel_status">Состояние защиты</string>
+    <string name="notification_interrupted_title">Блокировка остановлена</string>
+    <string name="notification_interrupted_restart">Включить</string>
+    <string name="notification_update_stopped">Обновление остановило блокировку. Нажмите «Включить», чтобы вернуть защиту.</string>
+    <string name="notification_update_permission_lost">Обновление остановило блокировку: разрешение VPN отозвано. Откройте приложение и включите её заново.</string>
+
+    <string name="health_service_stopped_title">Защита выключена</string>
+    <string name="health_service_stopped_text">Блокировка работала, но VPN-сервис остановился. Включите её снова, иначе матч-серверы проходят напрямую.</string>
+    <string name="health_geoip_failed_title">GeoIP не работает</string>
+    <string name="health_geoip_failed_text">База городов не открывается, поэтому у серверов нет названий. Попробуйте восстановить базу.</string>
+    <string name="health_rules_failed_title">Правила не загрузились</string>
+    <string name="health_rules_failed_text">Используется встроенный набор правил. Проверьте обновление правил в настройках.</string>
+    <string name="health_fix">Исправить</string>
+
+    <string name="unknown_port_title">Незнакомый порт %1$d</string>
+    <string name="unknown_port_text">MLBB подключилась к %1$s:%2$d. Это матч-сервер, сервисный порт или лишний трафик?</string>
+    <string name="unknown_port_match">Матч-порт</string>
+    <string name="unknown_port_service">Сервисный</string>
+    <string name="unknown_port_ignore">Игнорировать</string>
+    <string name="unknown_port_added_match">Порт %1$d теперь считается матч-портом</string>
+    <string name="unknown_port_added_service">Порт %1$d помечен как сервисный</string>
+
+    <string name="settings_unknown_ports_title">Спрашивать о новых портах</string>
+    <string name="settings_unknown_ports_desc">Если MLBB начнёт использовать порт вне известного набора, придёт уведомление с выбором «матч-порт / сервисный / игнорировать».</string>
+
+    <string name="rules_settings_title">Правила с сервера</string>
+    <string name="rules_settings_desc">Подписанный набор портов, профилей и серверов. Проверяется раз в сутки; при ошибке остаются прежние правила.</string>
+    <string name="rules_check_now">Проверить сейчас</string>
+    <string name="rules_checking">Проверка…</string>
+    <string name="rules_source_builtin">встроенные</string>
+    <string name="rules_source_asset">из APK</string>
+    <string name="rules_source_cached">сохранённые</string>
+    <string name="rules_source_remote">с GitHub</string>
+    <string name="rules_status_line">Источник: %1$s · версия %2$s</string>
+    <string name="rules_updated">Правила обновлены: %1$s</string>
+    <string name="rules_up_to_date">Правила актуальны</string>
+    <string name="rules_rejected">Правила отклонены: %1$s</string>
+    <string name="rules_network_error">Не удалось проверить правила: %1$s</string>
 </resources>

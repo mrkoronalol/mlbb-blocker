@@ -36,6 +36,8 @@ import ru.mlbb.blocker.config.SingBoxConfigBuilder
 import ru.mlbb.blocker.data.BlockerRepository
 import ru.mlbb.blocker.data.BlockerStatus
 import ru.mlbb.blocker.data.BlocklistStore
+import ru.mlbb.blocker.data.PortOverrides
+import ru.mlbb.blocker.data.UnknownPortDetector
 import ru.mlbb.blocker.data.db.MonitorRepository
 import java.io.File
 import java.net.InetAddress
@@ -46,11 +48,13 @@ class BlockerVpnService : VpnService() {
     companion object {
         private const val TAG = "BlockerVpnService"
         private const val NOTIFICATION_ID = 1001
+        private const val MAX_START_ATTEMPTS = 1
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val stopping = AtomicBoolean(false)
     private val started = AtomicBoolean(false)
+    private val startAttempts = java.util.concurrent.atomic.AtomicInteger(0)
 
     private var commandServer: CommandServer? = null
     private var platformBridge: PlatformBridge? = null
@@ -71,6 +75,7 @@ class BlockerVpnService : VpnService() {
             BlockerController.ACTION_START -> {
                 if (started.compareAndSet(false, true)) {
                     stopping.set(false)
+                    startAttempts.set(0)
                     sessionPort = intent.getIntExtra(BlockerController.EXTRA_PORT, 0)
                         .takeIf { it > 0 } ?: BlockerConfig.newPort()
                     sessionSecret = intent.getStringExtra(BlockerController.EXTRA_SECRET)
@@ -120,8 +125,10 @@ class BlockerVpnService : VpnService() {
     private fun startBlocking() {
         BlockerRepository.setStatus(BlockerStatus.Starting)
         MonitorRepository.initialize(this)
-        BlocklistStore(this).lastRunning = true
-        lastRuleCount = BlocklistStore(this).loadRules().count { it.enabled }
+        val store = BlocklistStore(this)
+        store.lastRunning = true
+        PortOverrides.load(store)
+        lastRuleCount = store.loadRules().count { it.enabled }
 
         startForegroundCompat(buildNotification(lastRuleCount))
 
@@ -154,6 +161,8 @@ class BlockerVpnService : VpnService() {
 
                 BlockerRepository.setStatus(BlockerStatus.Running)
                 updateNotification(lastRuleCount)
+                startAttempts.set(0)
+                VpnNotifier.cancel(this@BlockerVpnService)
                 BlockerRepository.log("Блокировка запущена. Правил: $lastRuleCount, режим обнаружения: ${BlocklistStore(this@BlockerVpnService).discoveryMode}")
                 scheduleDiscoveryEnd()
                 scheduleAllowExpiry()
@@ -231,10 +240,33 @@ class BlockerVpnService : VpnService() {
 
     private fun fail(t: Throwable) {
         val message = t.message ?: t.javaClass.simpleName
+        cleanupAfterFailure()
+        val attempt = startAttempts.incrementAndGet()
+        if (!stopping.get() && attempt <= MAX_START_ATTEMPTS) {
+            BlockerRepository.setStatus(BlockerStatus.Starting)
+            BlockerRepository.log("Ошибка запуска: $message. Повторная попытка $attempt")
+            scope.launch {
+                delay(1_500)
+                if (stopping.get()) return@launch
+                started.set(true)
+                startBlocking()
+            }
+            return
+        }
+
         BlockerRepository.setStatus(BlockerStatus.Error(message))
         BlockerRepository.log("Ошибка запуска: $message")
         started.set(false)
-        BlocklistStore(this).lastRunning = false
+        scope.launch {
+            withContext(Dispatchers.Main) {
+                runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
+                stopSelf()
+            }
+        }
+        VpnNotifier.notifyInterrupted(this, message)
+    }
+
+    private fun cleanupAfterFailure() {
         discoveryJob?.cancel()
         discoveryJob = null
         allowExpiryJob?.cancel()
@@ -251,12 +283,6 @@ class BlockerVpnService : VpnService() {
         platformBridge = null
         closeTunInterface()
         DefaultNetworkMonitor.stop()
-        scope.launch {
-            withContext(Dispatchers.Main) {
-                runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
-                stopSelf()
-            }
-        }
     }
 
     private fun createHandler(): CommandServerHandler {
@@ -495,6 +521,11 @@ class BlockerVpnService : VpnService() {
             { ip, port, network, blocked ->
                 if (!stopping.get()) {
                     matchAlertManager?.onMatch(ip, port, network, blocked)
+                }
+            },
+            { ip, port ->
+                if (!stopping.get()) {
+                    UnknownPortDetector.onConnection(this@BlockerVpnService, ip, port)
                 }
             },
         ).also { it.start() }

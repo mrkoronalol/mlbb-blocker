@@ -114,6 +114,9 @@ class MainActivity : ComponentActivity() {
                     onRemoveAllow = viewModel::removeAllowRule,
                     onMessageShown = viewModel::consumeMessage,
                     onShowMessage = viewModel::showMessage,
+                    onHealthAction = viewModel::runHealthAction,
+                    onRefreshRules = viewModel::refreshRemoteRules,
+                    onUnknownPortAlertsChange = viewModel::setUnknownPortAlerts,
                 )
             }
         }

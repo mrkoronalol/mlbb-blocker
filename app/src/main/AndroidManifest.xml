@@ -47,6 +47,25 @@
         </receiver>
 
         <receiver
+            android:name=".receiver.PackageReplacedReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".receiver.ProtectionRestartReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <receiver
+            android:name=".receiver.UnknownPortActionReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <receiver
             android:name=".UpdateInstallReceiver"
             android:enabled="true"
             android:exported="false" />
