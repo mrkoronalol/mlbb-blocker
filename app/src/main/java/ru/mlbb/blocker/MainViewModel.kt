@@ -500,6 +500,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val profile = RegionProfiles.byId(profileId) ?: return
         if (store.selectedProfile == profileId) return
         store.selectProfile(profileId)
+        Analytics.track("profile_selected", mapOf("profile" to profileId))
         refreshRules()
         reloadIfRunning()
         showMessage(
