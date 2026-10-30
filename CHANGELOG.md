@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.19.0
+
+- Anonymous telemetry: a random device id, events queued in Room and sent in batches every 15 minutes.
+- Funnel events: `app_open`, `vpn_enabled`, `meta_opened`, `profile_selected`, `config_sync`.
+- Blocked/pinged server IPs are reported (hashed on the server) to build the server map.
+- Remote config from the site: maintenance mode, Meta tab switch, global notice, minimal app version.
+- Config is synced every 6 hours and on launch; on failure the last saved config is used, the app never crashes.
+- Profiles are now served by remote config with a fallback to the bundled rules.
+- Update-required dialog when the installed version is below the configured minimum.
+
 ## 0.18.0
 
 - Monitor screen: compact rows (IP + city + ping), actions moved to a bottom sheet.
