@@ -22,7 +22,7 @@ class ConnectionMonitor(
     private val scope: CoroutineScope,
     private val log: (String) -> Unit,
     private val onMatch: ((String, Int, String, Boolean) -> Unit)? = null,
-    private val onConnection: ((String, Int) -> Unit)? = null,
+    private val onConnection: ((String, Int, String) -> Unit)? = null,
 ) {
     private var client: CommandClient? = null
     private var connectJob: Job? = null
@@ -121,7 +121,7 @@ class ConnectionMonitor(
                             onMatch?.invoke(parsed.first, parsed.second, network, blocked)
                         }
                         if (onConnection != null) {
-                            runCatching { onConnection.invoke(parsed.first, parsed.second) }
+                            runCatching { onConnection.invoke(parsed.first, parsed.second, network) }
                         }
                     }
                 } catch (_: Throwable) {

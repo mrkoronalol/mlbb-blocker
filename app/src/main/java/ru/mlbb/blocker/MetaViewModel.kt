@@ -16,6 +16,7 @@ import ru.mlbb.blocker.data.meta.MetaRepository
 import ru.mlbb.blocker.data.meta.MetaResult
 import ru.mlbb.blocker.data.meta.MetaSnapshot
 import ru.mlbb.blocker.data.meta.MetaTier
+import ru.mlbb.blocker.data.analytics.Analytics
 
 data class MetaUiState(
     val loading: Boolean = true,
@@ -44,6 +45,7 @@ class MetaViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         MetaRepository.initialize(application)
+        Analytics.track("meta_opened")
         loadCache()
         refresh()
     }

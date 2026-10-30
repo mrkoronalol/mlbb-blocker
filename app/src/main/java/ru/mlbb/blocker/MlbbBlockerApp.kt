@@ -9,16 +9,26 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import ru.mlbb.blocker.data.BlocklistStore
 import ru.mlbb.blocker.data.UpdateWorker
+import ru.mlbb.blocker.data.analytics.Analytics
+import ru.mlbb.blocker.data.analytics.TelemetryWorker
 import ru.mlbb.blocker.data.db.MonitorRepository
 import ru.mlbb.blocker.data.geo.GeoIpRepository
 import ru.mlbb.blocker.data.RegionProfiles
+import ru.mlbb.blocker.data.remote.ConfigSyncWorker
+import ru.mlbb.blocker.data.remote.RemoteConfigRepository
 import ru.mlbb.blocker.data.rules.RuleConfigRepository
 import ru.mlbb.blocker.data.rules.RulesRefreshWorker
 import java.util.concurrent.TimeUnit
 
 class MlbbBlockerApp : Application() {
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -26,6 +36,8 @@ class MlbbBlockerApp : Application() {
         MonitorRepository.initialize(this)
         GeoIpRepository.initialize(this)
         RuleConfigRepository.initialize(this)
+        RemoteConfigRepository.initialize(this)
+        Analytics.initialize(this)
         seedFirstRun()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)
@@ -73,6 +85,13 @@ class MlbbBlockerApp : Application() {
         }
         scheduleUpdateChecks()
         scheduleRulesRefresh()
+        ConfigSyncWorker.schedule(this)
+        ConfigSyncWorker.syncNow(this)
+        TelemetryWorker.schedule(this)
+        Analytics.track("app_open", mapOf("version" to BuildConfig.VERSION_NAME))
+        appScope.launch {
+            runCatching { Analytics.flush(this@MlbbBlockerApp) }
+        }
     }
 
     private fun scheduleRulesRefresh() {

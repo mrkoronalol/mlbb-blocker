@@ -34,6 +34,7 @@ import ru.mlbb.blocker.data.GamePorts
 import ru.mlbb.blocker.data.HealthIssue
 import ru.mlbb.blocker.data.BlockerHealth
 import ru.mlbb.blocker.data.InstallResult
+import ru.mlbb.blocker.data.analytics.Analytics
 import ru.mlbb.blocker.data.MlbbPackageInfo
 import ru.mlbb.blocker.data.db.BlockedAttemptEntity
 import ru.mlbb.blocker.data.db.MatchSessionEntity
@@ -56,6 +57,7 @@ import ru.mlbb.blocker.data.rules.RuleConfigRepository
 import ru.mlbb.blocker.data.rules.RulesRefreshResult
 import ru.mlbb.blocker.data.rules.RulesSource
 import ru.mlbb.blocker.data.rules.RulesStatus
+import ru.mlbb.blocker.data.remote.RemoteConfigRepository
 import ru.mlbb.blocker.vpn.BlockerController
 import ru.mlbb.blocker.vpn.MatchAlertManager
 
@@ -99,6 +101,11 @@ data class UiState(
     val rulesStatus: RulesStatus = RulesStatus(),
     val unknownPortAlerts: Boolean = true,
     val stableOnlyAlerts: Boolean = false,
+    val maintenance: Boolean = false,
+    val remoteNotice: String = "",
+    val featureMetaEnabled: Boolean = true,
+    val updateRequired: Boolean = false,
+    val minAppVersion: String = "",
 ) {
     val isBusy: Boolean get() = status is BlockerStatus.Starting
     val isRunning: Boolean get() = status is BlockerStatus.Running
@@ -172,6 +179,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             RuleConfigRepository.status.collect { status ->
                 _ui.update { it.copy(rulesStatus = status) }
+            }
+        }
+        viewModelScope.launch {
+            RemoteConfigRepository.state.collect { config ->
+                _ui.update {
+                    it.copy(
+                        maintenance = config.maintenance,
+                        remoteNotice = config.notice,
+                        featureMetaEnabled = config.featureMetaEnabled,
+                        updateRequired = config.updateRequired,
+                        minAppVersion = config.minAppVersion,
+                    )
+                }
             }
         }
         var geoEnriched = false
@@ -599,6 +619,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 NetworkPing.tcp(connection.ip, connection.port)
             }
             MonitorRepository.updatePing(connection, result)
+            Analytics.recordServerIp(
+                ip = connection.ip,
+                port = connection.port,
+                protocol = connection.network,
+                city = connection.city,
+                country = connection.country,
+                pingMs = result.ms,
+            )
         } finally {
             _ui.update { it.copy(pingingKeys = it.pingingKeys - key) }
         }

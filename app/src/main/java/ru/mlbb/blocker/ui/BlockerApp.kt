@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -133,12 +134,29 @@ fun BlockerApp(
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var showAbout by rememberSaveable { mutableStateOf(false) }
+    var updateDismissed by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val tabs = remember(ui.featureMetaEnabled) {
+        buildList {
+            add(AppTab.Home)
+            add(AppTab.Match)
+            add(AppTab.Monitor)
+            add(AppTab.Blocklist)
+            if (ui.featureMetaEnabled) add(AppTab.Meta)
+            add(AppTab.Settings)
+        }
+    }
+    val currentTab = tabs.getOrElse(tab) { AppTab.Home }
 
     LaunchedEffect(ui.message) {
         val message = ui.message ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message)
         onMessageShown()
+    }
+
+    if (ui.maintenance) {
+        MaintenanceScreen(notice = ui.remoteNotice)
+        return
     }
 
     Scaffold(
@@ -187,29 +205,11 @@ fun BlockerApp(
                     containerColor = AppColors.Surface,
                     tonalElevation = 0.dp,
                 ) {
-                    NavigationItem(0, tab, "Главная", Icons.Default.Home) {
-                        showAbout = false
-                        tab = it
-                    }
-                    NavigationItem(1, tab, "Матч", Icons.Default.PlayArrow) {
-                        showAbout = false
-                        tab = it
-                    }
-                    NavigationItem(2, tab, "Монитор", Icons.Default.Search) {
-                        showAbout = false
-                        tab = it
-                    }
-                    NavigationItem(3, tab, "Блок", Icons.Default.Lock) {
-                        showAbout = false
-                        tab = it
-                    }
-                    NavigationItem(4, tab, "Мета", Icons.Default.Star) {
-                        showAbout = false
-                        tab = it
-                    }
-                    NavigationItem(5, tab, "Настройки", Icons.Default.Settings) {
-                        showAbout = false
-                        tab = it
+                    tabs.forEachIndexed { index, item ->
+                        NavigationItem(index, tab, item.label, item.icon) {
+                            showAbout = false
+                            tab = it
+                        }
                     }
                 }
             }
@@ -219,8 +219,8 @@ fun BlockerApp(
             if (showAbout) {
                 AboutScreen()
             } else {
-                when (tab) {
-                    0 -> HomeScreen(
+                when (currentTab) {
+                    AppTab.Home -> HomeScreen(
                         ui = ui,
                         onToggle = onToggle,
                         onDiscoveryChange = onDiscoveryChange,
@@ -231,7 +231,7 @@ fun BlockerApp(
                         onOpenAbout = { showAbout = true },
                         onHealthAction = onHealthAction,
                     )
-                    1 -> MatchScreen(
+                    AppTab.Match -> MatchScreen(
                         ui = ui,
                         onStartGame = onStartGame,
                         onStartDiscovery = onStartDiscovery,
@@ -240,7 +240,7 @@ fun BlockerApp(
                         onAllow = onAllow,
                         onRemoveAllow = onRemoveAllow,
                     )
-                    2 -> ConnectionsScreen(
+                    AppTab.Monitor -> ConnectionsScreen(
                         connections = ui.connections,
                         selectedProfile = ui.selectedProfile,
                         pingingKeys = ui.pingingKeys,
@@ -250,7 +250,7 @@ fun BlockerApp(
                         onClear = onClearConnections,
                         onShowMessage = onShowMessage,
                     )
-                    3 -> BlocklistScreen(
+                    AppTab.Blocklist -> BlocklistScreen(
                         rules = ui.rules,
                         onAddRule = onAddRule,
                         onAddRules = onAddRules,
@@ -260,8 +260,8 @@ fun BlockerApp(
                         onClearRules = onClearRules,
                         onShowMessage = onShowMessage,
                     )
-                    4 -> MetaScreen()
-                    else -> SettingsScreen(
+                    AppTab.Meta -> MetaScreen()
+                    AppTab.Settings -> SettingsScreen(
                         ui = ui,
                         onDiscoveryChange = onDiscoveryChange,
                         onFastRejectChange = onFastRejectChange,
@@ -285,6 +285,99 @@ fun BlockerApp(
             }
         }
     }
+
+    if (ui.updateRequired && !updateDismissed) {
+        UpdateRequiredDialog(
+            currentVersion = BuildConfig.VERSION_NAME,
+            minVersion = ui.minAppVersion,
+            onDismiss = { updateDismissed = true },
+        )
+    }
+}
+
+private enum class AppTab(val label: String, val icon: ImageVector) {
+    Home("Главная", Icons.Default.Home),
+    Match("Матч", Icons.Default.PlayArrow),
+    Monitor("Монитор", Icons.Default.Search),
+    Blocklist("Блок", Icons.Default.Lock),
+    Meta("Мета", Icons.Default.Star),
+    Settings("Настройки", Icons.Default.Settings),
+}
+
+@Composable
+private fun MaintenanceScreen(notice: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        EsportsCard {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(AppColors.Warning.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = AppColors.Warning,
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
+                Text(
+                    "Идут технические работы",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    notice.ifBlank { "Скоро вернёмся. Приложение обновится автоматически." },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UpdateRequiredDialog(
+    currentVersion: String,
+    minVersion: String,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Пожалуйста, обновитесь") },
+        text = {
+            Text(
+                "Установлена версия $currentVersion, требуется $minVersion или новее. " +
+                    "Новая версия уже доступна на GitHub.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    openUrl(context, "https://github.com/mrkoronalol/mlbb-blocker/releases/latest")
+                },
+            ) {
+                Text("Скачать обновление")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Позже") }
+        },
+    )
 }
 
 @Composable
@@ -330,6 +423,7 @@ private fun HomeScreen(
     onHealthAction: () -> Unit,
 ) {
     var infoProfile by remember { mutableStateOf<RegionProfile?>(null) }
+    var noticeDismissed by rememberSaveable { mutableStateOf(false) }
     val error = ui.status as? BlockerStatus.Error
 
     Column(
@@ -367,6 +461,39 @@ private fun HomeScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
+            }
+        }
+
+        if (ui.remoteNotice.isNotBlank() && !noticeDismissed) {
+            EsportsCard(
+                colors = CardDefaults.cardColors(
+                    containerColor = AppColors.Cyan.copy(alpha = 0.10f),
+                ),
+                border = BorderStroke(1.dp, AppColors.Cyan.copy(alpha = 0.35f)),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = AppColors.CyanLight,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        ui.remoteNotice,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    TextButton(onClick = { noticeDismissed = true }) {
+                        Text("Скрыть", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
             }
         }
 

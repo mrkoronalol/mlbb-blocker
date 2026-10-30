@@ -36,8 +36,11 @@ import ru.mlbb.blocker.config.SingBoxConfigBuilder
 import ru.mlbb.blocker.data.BlockerRepository
 import ru.mlbb.blocker.data.BlockerStatus
 import ru.mlbb.blocker.data.BlocklistStore
+import ru.mlbb.blocker.data.GamePorts
 import ru.mlbb.blocker.data.PortOverrides
 import ru.mlbb.blocker.data.UnknownPortDetector
+import ru.mlbb.blocker.data.analytics.Analytics
+import ru.mlbb.blocker.data.geo.GeoIpRepository
 import ru.mlbb.blocker.data.db.MonitorRepository
 import java.io.File
 import java.net.InetAddress
@@ -164,6 +167,14 @@ class BlockerVpnService : VpnService() {
                 startAttempts.set(0)
                 VpnNotifier.cancel(this@BlockerVpnService)
                 BlockerRepository.log("Блокировка запущена. Правил: $lastRuleCount, режим обнаружения: ${BlocklistStore(this@BlockerVpnService).discoveryMode}")
+                Analytics.track(
+                    "vpn_enabled",
+                    mapOf(
+                        "profile" to (BlocklistStore(this@BlockerVpnService).selectedProfile ?: "none"),
+                        "rules" to lastRuleCount,
+                        "version" to BuildConfig.VERSION_NAME,
+                    ),
+                )
                 scheduleDiscoveryEnd()
                 scheduleAllowExpiry()
                 matchAlertManager?.destroy()
@@ -523,9 +534,19 @@ class BlockerVpnService : VpnService() {
                     matchAlertManager?.onMatch(ip, port, network, blocked)
                 }
             },
-            { ip, port ->
+            { ip, port, network ->
                 if (!stopping.get()) {
                     UnknownPortDetector.onConnection(this@BlockerVpnService, ip, port)
+                    if (GamePorts.isMatchPort(port) || GamePorts.isSafePort(port)) {
+                        val geo = GeoIpRepository.lookup(ip)
+                        Analytics.recordServerIp(
+                            ip = ip,
+                            port = port,
+                            protocol = network,
+                            city = geo?.city,
+                            country = geo?.country,
+                        )
+                    }
                 }
             },
         ).also { it.start() }

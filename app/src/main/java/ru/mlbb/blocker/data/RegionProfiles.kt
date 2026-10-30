@@ -2,6 +2,7 @@ package ru.mlbb.blocker.data
 
 import ru.mlbb.blocker.data.rules.BuiltInRules
 import ru.mlbb.blocker.data.rules.RuleConfigRepository
+import ru.mlbb.blocker.data.remote.RemoteConfigRepository
 
 data class RegionProfile(
     val id: String,
@@ -24,7 +25,9 @@ object RegionProfiles {
     val NOVOSIBIRSK_SERVERS: List<Pair<String, String>> get() = BuiltInRules.NOVOSIBIRSK_SERVERS
 
     val all: List<RegionProfile>
-        get() = RuleConfigRepository.current.profiles
+        get() = RemoteConfigRepository.profiles.ifEmpty {
+            RuleConfigRepository.current.profiles
+        }
 
     fun byId(id: String): RegionProfile? = all.firstOrNull { it.id == id }
 
