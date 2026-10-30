@@ -4,12 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -20,12 +18,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,162 +36,192 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.mlbb.blocker.BuildConfig
 
+private data class Release(val version: String, val bullets: List<String>)
+
+private val RELEASES = listOf(
+    Release(
+        "0.18.0",
+        listOf(
+            "Монитор: компактные строки, действия в шторке по тапу",
+            "«О приложении» разбито на аккордеоны, история версий свёрнута",
+            "Меньше текста на экранах — описания спрятаны в раскрытия",
+        ),
+    ),
+    Release(
+        "0.17.0",
+        listOf(
+            "Компактная главная: профили МСК / ДВ / НСК в один ряд, описание — по (i)",
+            "Блокировка включается кнопкой, видимой без прокрутки",
+            "Блоклист: короткие строки и удаление свайпом влево",
+            "Настройки разбиты на аккордеоны",
+            "Мета: заглушка при недоступном API и крупные плитки героев",
+        ),
+    ),
+    Release(
+        "0.16.0",
+        listOf(
+            "Тёмный дизайн в стиле сайта MLBB Meta",
+            "Вкладка «Мета» с тирами S–D и статистикой героев",
+            "Данные меты кэшируются в Room и работают офлайн",
+        ),
+    ),
+    Release(
+        "0.15.0",
+        listOf(
+            "Полный пинг в карточке матча: среднее, джиттер, потери",
+            "Кнопки «Заблокировать» и «Не показывать» в карточке",
+            "Настройка «Только стабильные соединения»",
+        ),
+    ),
+    Release(
+        "0.14.0",
+        listOf(
+            "VPN поднимается сам после обновления APK",
+            "Баннер «Защита выключена»",
+            "Подписанные правила с GitHub и ежедневная проверка",
+            "Уведомление о новом порте MLBB",
+        ),
+    ),
+    Release(
+        "0.13.x",
+        listOf(
+            "Исправлена GeoIP после минификации",
+            "Добавлены матч-порты 10011–10013, 10063 и 5500–5599",
+            "Переключатель основного сервера .151",
+        ),
+    ),
+    Release(
+        "0.12.0",
+        listOf(
+            "Подписанный release APK и автосборка",
+            "Профили блокируют только матч-порты",
+            "Монитор: поиск, сортировка, лучший пинг",
+        ),
+    ),
+    Release(
+        "0.10 – 0.11",
+        listOf(
+            "Карточка «Матч найден» поверх игры",
+            "Монитор всех серверов MLBB",
+            "Новая иконка MB и плитка Quick Settings",
+        ),
+    ),
+    Release(
+        "0.9.0",
+        listOf(
+            "GeoIP внутри APK",
+            "Профили «только Москва» и «только Новосибирск»",
+            "Экран «О приложении»",
+        ),
+    ),
+)
+
 @Composable
 fun AboutScreen() {
+    var expanded by rememberSaveable { mutableStateOf(setOf("features", "latest")) }
+
+    fun toggle(id: String) {
+        expanded = if (id in expanded) expanded - id else expanded + id
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         HeroCard()
 
-        AboutCard("Что уже работает") {
-            FeatureRow("Локальный VPN-фильтр только для Mobile Legends — без удалённого сервера")
-            FeatureRow("Три профиля: Москва, ДВ и Новосибирск")
-            FeatureRow("Режимы «только Москва» и «только Новосибирск» с блокировкой остальных матч-серверов")
-            FeatureRow("Блоклист IP/CIDR и ручное управление правилами")
-            FeatureRow("Монитор всех серверов MLBB с фильтрами по регионам")
-            FeatureRow("TCP-пинг, джиттер, история матчей и заблокированных попыток")
-            FeatureRow("Карточка «Матч найден» поверх игры и кнопка «Разрешить 5 мин»")
-            FeatureRow("Офлайн GeoIP: встроенная база DB-IP Lite City (IPv4)")
-            FeatureRow("Сбор серверов за 60 секунд и экспорт списка IP")
+        ExpandableCard(
+            title = "Возможности",
+            subtitle = "VPN, профили, монитор, мета",
+            expanded = "features" in expanded,
+            onToggle = { toggle("features") },
+        ) {
+            FeatureRow("Локальный VPN-фильтр только для Mobile Legends")
+            FeatureRow("Профили Москва, ДВ и Новосибирск с режимом «только этот регион»")
+            FeatureRow("Блоклист IP/CIDR и региональные пресеты")
+            FeatureRow("Монитор серверов: фильтры по регионам, пинг и джиттер")
+            FeatureRow("Мета с сайта MLBB Meta, кэш для офлайна")
+            FeatureRow("Карточка матча поверх игры и «Разрешить 5 мин»")
+            FeatureRow("GeoIP офлайн и сбор серверов за 60 секунд")
         }
 
-        AboutCard("Что нового в 0.17.0") {
-            BulletRow("Компактная главная: профили МСК / ДВ / НСК в один ряд, описание — в шторке по (i)")
-            BulletRow("Кнопка блокировки поднята выше — видна без прокрутки на небольших экранах")
-            BulletRow("Блоклист: короткие строки с бейджем региона, удаление свайпом влево")
-            BulletRow("Настройки разбиты на аккордеоны, «Правила» — одна строка с кнопкой обновления")
-            BulletRow("Мета: аккуратная заглушка при недоступном API и крупные плитки героев")
-            BulletRow("Матч: убран дубль выбора профиля, остались чек-лист и кнопка «Открыть MLBB»")
+        ExpandableCard(
+            title = "Как это работает",
+            subtitle = "4 шага",
+            expanded = "how" in expanded,
+            onToggle = { toggle("how") },
+        ) {
+            StepRow("1", "VPN перехватывает только трафик MLBB.")
+            StepRow("2", "Разрешённые IP идут напрямую, остальные — в локальный sink.")
+            StepRow("3", "Профили «только Москва/Новосибирск» блокируют другие матч-серверы.")
+            StepRow("4", "Логин, магазин и служебные подключения не блокируются.")
         }
 
-        AboutCard("Что нового в 0.16.0") {
-            BulletRow("Новый тёмный дизайн в стиле сайта MLBB Meta: navy-фон, стеклянные карточки, синие акценты")
-            BulletRow("Шесть разделов: Главная, Матч, Монитор, Блок, Мета, Настройки")
-            BulletRow("Вкладка «Мета»: тиры S–D, группировка по линиям, статистика героя в шторке")
-            BulletRow("Данные меты приходят с сайта и кэшируются в Room — работают без интернета")
-            BulletRow("Регион меты (Мир / Москва / ДВ) и бан-лист контрпиков")
+        ExpandableCard(
+            title = "Что нового в ${BuildConfig.VERSION_NAME}",
+            subtitle = "Коротко о последнем обновлении",
+            expanded = "latest" in expanded,
+            onToggle = { toggle("latest") },
+        ) {
+            val latest = RELEASES.first()
+            latest.bullets.forEach { BulletRow(it) }
         }
 
-        AboutCard("Что нового в 0.15.0") {
-            BulletRow("В карточке матча — город и страна, профиль и полный пинг: среднее, джиттер, потери")
-            BulletRow("Кнопки «Заблокировать» и «Не показывать» прямо в карточке")
-            BulletRow("Настройка «Только стабильные соединения»: карточка разрешённого сервера после 6 секунд")
-            BulletRow("Заблокированные серверы показываются всегда, даже при включённых фильтрах")
+        ExpandableCard(
+            title = "История версий",
+            subtitle = "0.9 — 0.17",
+            expanded = "history" in expanded,
+            onToggle = { toggle("history") },
+        ) {
+            RELEASES.drop(1).forEach { release ->
+                Text(
+                    release.version,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AppColors.CyanLight,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                release.bullets.forEach { BulletRow(it) }
+            }
         }
 
-        AboutCard("Что нового в 0.14.0") {
-            BulletRow("VPN снова включается сам после обновления APK")
-            BulletRow("Баннер «Защита выключена» с кнопкой восстановления")
-            BulletRow("Одна автоматическая повторная попытка при падении сервиса")
-            BulletRow("Подписанные правила rules.json с GitHub и проверка подписи ключом приложения")
-            BulletRow("Ежедневная проверка правил и откат на последний рабочий набор")
-            BulletRow("Уведомление о новом порте MLBB: матч-порт, сервисный или игнорировать")
-        }
-
-        AboutCard("Что нового в 0.13.3") {
-            BulletRow("Исправлена GeoIP после release-минификации: города снова определяются")
-            BulletRow("Добавлены матч-порты 10011–10013, 10063 и 5500–5599")
-            BulletRow("Города с районами нормализуются: Москва, Франкфурт и другие")
-        }
-
-        AboutCard("Что нового в 0.13.2") {
-            BulletRow("Добавлен переключатель «Разрешать основной сервер .151»")
-            BulletRow("При выключении 154.85.91.151:10003 блокируется как московский")
-            BulletRow("Заблокированные матч-серверы всегда показывают карточку")
-        }
-
-        AboutCard("Что нового в 0.13.1") {
-            BulletRow("Заблокированные матч-серверы снова показывают карточку")
-            BulletRow("Скрытие по времени жизни применяется только к разрешённым подключениям")
-            BulletRow("Исправлена пропажа уведомления для московских IP")
-        }
-
-        AboutCard("Что нового в 0.13.0") {
-            BulletRow("Экспорт и импорт резервной копии через системный выбор файла")
-            BulletRow("Перед обновлением автоматически создаётся локальная копия")
-            BulletRow("Загрузка APK в приложении с проверкой SHA256 и подписи")
-            BulletRow("Установка обновления через системный PackageInstaller")
-        }
-
-        AboutCard("Что нового в 0.12.0") {
-            BulletRow("Подписанный release APK и автосборка GitHub Actions")
-            BulletRow("Умное скрытие стартовых подключений по времени жизни")
-            BulletRow("Профили блокируют только матч-порты, сервисные порты открыты")
-            BulletRow("Основной сервер 154.85.91.151:10003 всегда разрешён")
-            BulletRow("Монитор: поиск, сортировка, фильтры по странам и лучший пинг")
-            BulletRow("Пресеты блоклиста для Москвы, Новосибирска и ДВ")
-            BulletRow("Светлая тема / Material You и автозапуск после перезагрузки")
-        }
-
-        AboutCard("Что нового в 0.11.4") {
-            BulletRow("Первое появление карточки матча после включения VPN скрывается")
-            BulletRow("Стартовое подключение игры больше не показывает окно")
-            BulletRow("Порт 30190 по-прежнему идёт напрямую")
-        }
-
-        AboutCard("Что нового в 0.11.3") {
-            BulletRow("Убрано стартовое 60-секундное окно")
-            BulletRow("Порт 30190 с диагностикой серверов по-прежнему идёт напрямую")
-            BulletRow("Профиль применяется сразу после включения блокировки")
-        }
-
-        AboutCard("Что нового в 0.11.1") {
-            BulletRow("Новый логотип MB в мятном круге")
-            BulletRow("Adaptive icon, круглая иконка и monochrome для Android 13")
-            BulletRow("Обновлена иконка уведомления и плитки Quick Settings")
-        }
-
-        AboutCard("Что нового в 0.11.0") {
-            BulletRow("Компактная карточка матча в стиле уведомления")
-            BulletRow("Вкладка «Монитор» с фильтрами по всем регионам")
-            BulletRow("Проверка обновлений и уведомление о новой версии через GitHub")
-            BulletRow("Публичный репозиторий и APK на GitHub")
-        }
-
-        AboutCard("Что нового в 0.10.0") {
-            BulletRow("Карточка «Матч найден» поверх игры: город, IP, профиль и пинг")
-            BulletRow("Если показ поверх игры запрещён — heads-up уведомление")
-            BulletRow("Кулдаун 30 секунд на сервер, автоскрытие через 10 секунд")
-            BulletRow("Кнопка «Разрешить 5 мин» прямо из карточки")
-        }
-
-        AboutCard("Что нового в 0.9.0") {
-            BulletRow("GeoIP-база теперь лежит внутри APK и готова сразу после установки")
-            BulletRow("Новый экран «О приложении»")
-            BulletRow("Профили «Москва» и «Новосибирск» переделаны в режим «только этот регион»")
-            BulletRow("На главной появились крупные карточки профилей")
-        }
-
-        AboutCard("Как это работает") {
-            StepRow("1", "VPN-сервис перехватывает только трафик com.mobile.legends и com.mobilelegends.mi.")
-            StepRow("2", "Разрешённые IP идут напрямую. Нежелательные адреса уходят в локальный sink и не покидают телефон.")
-            StepRow("3", "В профилях «только Москва» и «только Новосибирск» разрешён выбранный регион, а остальные матч-порты блокируются.")
-            StepRow("4", "Логин, магазин и служебные подключения не блокируются, чтобы игра могла запуститься.")
-        }
-
-        AboutCard("Важно знать") {
+        ExpandableCard(
+            title = "Важно знать",
+            subtitle = "Ограничения",
+            expanded = "limits" in expanded,
+            onToggle = { toggle("limits") },
+        ) {
             NoticeRow("Приложение не меняет регион аккаунта и не обходит ограничения издателя.")
-            NoticeRow("Игра может не найти матч, если все доступные серверы выбранного региона заняты.")
-            NoticeRow("Перед включением полностью закройте MLBB, чтобы игра заново проверила серверы.")
-            NoticeRow("GeoIP-база содержит только IPv4. Для IPv6-адресов город может не определиться.")
+            NoticeRow("Если все серверы выбранного региона заняты, матч может не найтись.")
+            NoticeRow("Перед включением полностью закройте MLBB.")
+            NoticeRow("GeoIP содержит только IPv4 — для IPv6 город может не определиться.")
             NoticeRow("Блокировка по IP не гарантирует выбор конкретного сервера.")
         }
 
-        AboutCard("Приватность") {
+        ExpandableCard(
+            title = "Приватность",
+            subtitle = "Только локально",
+            expanded = "privacy" in expanded,
+            onToggle = { toggle("privacy") },
+        ) {
             Text(
-                "Нет аналитики, аккаунтов и облачной синхронизации. Все правила, история и измерения хранятся только на этом устройстве. Трафик не отправляется на сторонние VPN-серверы.",
+                "Нет аналитики, аккаунтов и облачной синхронизации. Правила, история и измерения хранятся на устройстве. Трафик не уходит на сторонние VPN-серверы.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        AboutCard("Технологии и данные") {
+        ExpandableCard(
+            title = "Технологии",
+            subtitle = "Kotlin, Compose, sing-box",
+            expanded = "tech" in expanded,
+            onToggle = { toggle("tech") },
+        ) {
             Text(
-                "Kotlin, Jetpack Compose, sing-box/libbox, Room, MaxMind DB Reader. Геоданные: DB-IP Lite City, лицензия CC BY 4.0 (db-ip.com), сборка sapics/ip-location-db.",
+                "Kotlin, Jetpack Compose, sing-box/libbox, Room, Coil, MaxMind DB Reader. Геоданные: DB-IP Lite City, CC BY 4.0 (db-ip.com), sapics/ip-location-db.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -198,9 +229,9 @@ fun AboutScreen() {
 
         Text(
             "MLBB Blocker ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · для личного использования",
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp),
+            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
         )
     }
 }
@@ -222,87 +253,44 @@ private fun HeroCard() {
                         ),
                     ),
                 )
-                .padding(20.dp),
+                .padding(18.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(58.dp)
+                            .size(48.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             Icons.Default.Lock,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(30.dp),
+                            modifier = Modifier.size(24.dp),
                         )
                     }
-                    Spacer(Modifier.size(14.dp))
+                    Spacer(Modifier.size(12.dp))
                     Column {
                         Text(
                             "MLBB Blocker",
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             "Локальный фильтр серверов Mobile Legends",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MiniStat("3", "профиля", Modifier.weight(1f))
-                    MiniStat("0", "удалённых серверов", Modifier.weight(1f))
-                    MiniStat("100%", "локально", Modifier.weight(1f))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Pill("v${BuildConfig.VERSION_NAME}", AppColors.CyanLight)
+                    Pill("локально", AppColors.Success)
+                    Pill("без аккаунтов", AppColors.TextMuted)
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun MiniStat(value: String, label: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.55f))
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Text(
-            value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun AboutCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    EsportsCard(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
-        ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            content()
         }
     }
 }
@@ -316,8 +304,8 @@ private fun FeatureRow(text: String) {
         Icon(
             Icons.Default.Check,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 2.dp).size(16.dp),
+            tint = AppColors.Success,
+            modifier = Modifier.padding(top = 2.dp).size(15.dp),
         )
         Text(
             text,
@@ -335,8 +323,8 @@ private fun BulletRow(text: String) {
     ) {
         Text(
             "•",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.bodySmall,
+            color = AppColors.Cyan,
         )
         Text(
             text,
@@ -354,16 +342,16 @@ private fun StepRow(number: String, text: String) {
     ) {
         Box(
             modifier = Modifier
-                .size(24.dp)
+                .size(22.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)),
+                .background(AppColors.Blue.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 number,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                color = AppColors.BlueLight,
             )
         }
         Text(
@@ -384,8 +372,8 @@ private fun NoticeRow(text: String) {
         Icon(
             Icons.Default.Info,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.tertiary,
-            modifier = Modifier.padding(top = 2.dp).size(16.dp),
+            tint = AppColors.Warning,
+            modifier = Modifier.padding(top = 2.dp).size(15.dp),
         )
         Text(
             text,

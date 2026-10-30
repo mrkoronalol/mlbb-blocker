@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.0
+
+- Monitor screen: compact rows (IP + city + ping), actions moved to a bottom sheet.
+- Monitor header shows count and best ping; export/clear moved into the overflow menu.
+- About screen rebuilt with expandable sections; release history collapsed.
+- Less on-screen text across screens; empty states and descriptions live in sheets.
+
 ## 0.17.0
 
 - Compact home: three profile buttons in a row, descriptions moved to an info bottom sheet.
